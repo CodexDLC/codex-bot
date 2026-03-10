@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install -e \".[docs]\" -q)",
+      "Bash(python -c \"from codex_bot.base import BaseBotOrchestrator, UnifiedViewDTO, ViewResultDTO, BaseBotContext, MenuViewDTO, MessageCoordsDTO; print\\(''OK:'', BaseBotOrchestrator, UnifiedViewDTO\\)\")",
+      "Bash(mkdocs build --strict)",
+      "Bash(pip show mkdocs mkdocs-material)"
+    ]
+  }
+}

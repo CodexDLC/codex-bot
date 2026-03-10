@@ -1,0 +1,67 @@
+site_name: codex-bot
+site_description: Feature-based Aiogram framework library for Telegram bots
+site_author: Codex Team
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_category_heading: true
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            docstring_style: google
+
+nav:
+  - Home: README.md
+  - Getting Started: guide/getting_started.md
+  - API Reference:
+      - Overview: api/README.md
+      - Public API:
+          - base: api/base.md
+          - fsm: api/fsm.md
+          - director: api/director.md
+          - sender: api/sender.md
+          - redis: api/redis.md
+          - animation: api/animation.md
+          - helper: api/helper.md
+          - url_signer: api/url_signer.md
+      - Engine (Infrastructure):
+          - middlewares: api/middlewares.md
+          - discovery: api/discovery.md
+          - factory: api/factory.md
+          - router_builder: api/router_builder.md
+          - http: api/http.md
+      - CLI: api/cli.md

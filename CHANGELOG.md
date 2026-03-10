@@ -1,0 +1,25 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.1.0] - 2024-03-09
+
+### Added
+- **Initial Library Release**: Migration and adaptation of core infrastructure from production projects into a reusable feature-based framework.
+- **Feature-based Architecture**: Implementation of `BaseBotOrchestrator` and `Director` for stateless UI management.
+- **Redis Integration**: Stream processing, consumer groups support, and Redis-based dispatching.
+- **FSM Enhancements**: `GarbageStateRegistry` for automatic UI cleanup and advanced state management.
+- **Unified View System**: `ViewSender` and `UnifiedViewDTO` for consistent message rendering across different platforms.
+- **I18n Engine**: Custom Fluent-based locales compiler with isolation support.
+- **CLI Tools**: Scaffolding templates for rapid feature development.
+- **Multi-language Documentation**: Comprehensive guides and API references in English and Russian.
+- **DevOps Infrastructure**: Pre-commit hooks, Ruff/Mypy configurations, and GitHub Actions for docs.
+
+### Changed
+- Refactored production code into a modular library structure.
+- Standardized DTOs and protocols for better extensibility.
+- Optimized Redis Stream processing for high-load scenarios.
+- Improved type safety across the entire codebase (Mypy strict mode).

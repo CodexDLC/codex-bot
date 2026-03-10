@@ -1,0 +1,14 @@
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from .callbacks import {class_name}Callback
+from .texts import {class_name}Texts
+
+
+def build_main_kb():
+    """Main screen keyboard."""
+    builder = InlineKeyboardBuilder()
+    builder.button(
+        text={class_name}Texts.BUTTON_ACTION,
+        callback_data={class_name}Callback(action="action", id=0).pack(),
+    )
+    builder.adjust(1)
+    return builder.as_markup()
