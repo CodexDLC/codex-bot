@@ -28,6 +28,40 @@
 
 ---
 
+## 💻 Пример отправки сообщений
+
+`ViewSender` управляет двумя постоянными сообщениями (Menu и Content), чтобы чат оставался чистым.
+
+```python
+from codex_bot.sender.view_sender import ViewSender
+from codex_bot.base.view_dto import UnifiedViewDTO, ViewResultDTO
+
+# 1. Создаем ViewSender (обычно через DI-контейнер)
+sender = ViewSender(
+    bot=bot,
+    manager=sender_manager # Реализация SenderManagerProtocol
+)
+
+# 2. Подготавливаем данные для отправки
+view = UnifiedViewDTO(
+    content=ViewResultDTO(
+        text="👋 Добро пожаловать в Codex Bot!",
+        kb=main_keyboard
+    ),
+    menu=None, # Можно добавить постоянное меню
+    chat_id=12345678,
+    session_key=12345678
+)
+
+# 3. Отправляем (ViewSender сам решит: редактировать старое или отправить новое)
+await sender.send(view)
+
+# 4. Отправка с удалением триггерного сообщения (например, команды /start)
+await sender.send(view, trigger_id=message.message_id)
+```
+
+---
+
 ## 🗺️ Карта модуля
 
 | Компонент | Описание |
@@ -38,4 +72,4 @@
 
 ---
 
-**Последнее обновление:** 2025-02-07
+**Последнее обновление:** 2025-03-09

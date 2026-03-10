@@ -25,6 +25,49 @@ Orchestrators are the heart of every feature. They are designed as **Stateless S
 
 ---
 
+## 💻 Feature Implementation Example
+
+Every functional area of the bot (feature) starts with creating its own orchestrator.
+
+```python
+from pydantic import BaseModel
+from codex_bot.base.base_orchestrator import BaseBotOrchestrator
+from codex_bot.base.view_dto import ViewResultDTO
+from codex_bot.director import Director
+
+# 1. Define the data needed for rendering the screen
+class ProfilePayload(BaseModel):
+    user_id: int
+    is_premium: bool = False
+
+# 2. Create an orchestrator for the "Profile" feature
+class ProfileOrchestrator(BaseBotOrchestrator[ProfilePayload]):
+    def __init__(self):
+        # Specify the FSM state the user will transition to upon entering the feature
+        super().__init__(expected_state="ProfileStates:main")
+
+    async def render_content(
+        self,
+        payload: ProfilePayload,
+        director: Director
+    ) -> ViewResultDTO:
+        # Logic for retrieving data (e.g., from a database)
+        # All user information is available through the director
+
+        text = (
+            f"👤 User Profile {payload.user_id}\n"
+            f"Status: {'Premium' if payload.is_premium else 'Regular'}"
+        )
+
+        # Return text and keyboard (optional)
+        return ViewResultDTO(
+            text=text,
+            kb=None # This could be an InlineKeyboardMarkup
+        )
+```
+
+---
+
 ## 🗺️ Module Map
 
 | Component | Description |
@@ -35,4 +78,4 @@ Orchestrators are the heart of every feature. They are designed as **Stateless S
 
 ---
 
-**Last Updated:** 2025-02-07
+**Last Updated:** 2025-03-09

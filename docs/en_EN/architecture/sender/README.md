@@ -28,6 +28,40 @@ Since `ViewSender` is a **Stateless Singleton**, it doesn't store any user-speci
 
 ---
 
+## 💻 Message Sending Example
+
+`ViewSender` manages two persistent messages (Menu and Content) to keep the chat clean.
+
+```python
+from codex_bot.sender.view_sender import ViewSender
+from codex_bot.base.view_dto import UnifiedViewDTO, ViewResultDTO
+
+# 1. Create a ViewSender (usually via DI container)
+sender = ViewSender(
+    bot=bot,
+    manager=sender_manager # Implementation of SenderManagerProtocol
+)
+
+# 2. Prepare the data for sending
+view = UnifiedViewDTO(
+    content=ViewResultDTO(
+        text="👋 Welcome to Codex Bot!",
+        kb=main_keyboard
+    ),
+    menu=None, # You can add a persistent menu
+    chat_id=12345678,
+    session_key=12345678
+)
+
+# 3. Send (ViewSender will decide: edit old or send new)
+await sender.send(view)
+
+# 4. Send with trigger message deletion (e.g., /start command)
+await sender.send(view, trigger_id=message.message_id)
+```
+
+---
+
 ## 🗺️ Module Map
 
 | Component | Description |
@@ -38,4 +72,4 @@ Since `ViewSender` is a **Stateless Singleton**, it doesn't store any user-speci
 
 ---
 
-**Last Updated:** 2025-02-07
+**Last Updated:** 2025-03-09

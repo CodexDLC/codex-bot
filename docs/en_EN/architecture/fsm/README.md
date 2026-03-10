@@ -25,6 +25,37 @@ When a bot uses an inline-button-based UI, users often send accidental text mess
 
 ---
 
+## 💻 UI Garbage Collection Example
+
+`GarbageStateRegistry` allows you to automatically delete unwanted text messages in states where the bot only expects button clicks.
+
+```python
+from codex_bot.fsm.garbage_collector import GarbageStateRegistry
+from codex_bot.fsm.state_manager import BaseStateManager
+
+# 1. Register states where text garbage should be deleted
+garbage_registry = GarbageStateRegistry()
+garbage_registry.register_states([
+    "BookingStates:main",
+    "ProfileStates:edit_photo"
+])
+
+# 2. In the handler (automatically via RouterBuilder)
+# If a user writes text in the "BookingStates:main" state,
+# the bot will simply delete that message, keeping the interface clean.
+
+# 3. Using isolated feature data storage
+class BookingStateManager(BaseStateManager[BookingPayload]):
+    namespace = "booking"
+
+# In the orchestrator:
+# state_manager = BookingStateManager(director.state)
+# await state_manager.update(BookingPayload(service_id=42))
+# data = await state_manager.get_payload() # Returns only "booking" data
+```
+
+---
+
 ## 🗺️ Module Map
 
 | Component | Description |
@@ -35,4 +66,4 @@ When a bot uses an inline-button-based UI, users often send accidental text mess
 
 ---
 
-**Last Updated:** 2025-02-07
+**Last Updated:** 2025-03-09
