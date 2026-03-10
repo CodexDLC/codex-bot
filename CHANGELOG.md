@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2025-03-09
+
+### Added
+- **CI/CD Automation**: Integrated GitHub Actions for automated publishing to PyPI using Trusted Publishers (OIDC).
+- **Project Metadata**: Added comprehensive project URLs (Documentation, Repository, Issues, Changelog) to `pyproject.toml` for better PyPI presentation.
+
+### Fixed
+- **Documentation Links**: Corrected broken documentation links in `README.md` to point to the actual GitHub Pages site.
+
 ## [0.1.0] - 2025-03-09
 
 ### Added

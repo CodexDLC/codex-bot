@@ -25,6 +25,13 @@ dependencies = [
     "pydantic>=2.0,<3.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/codexdlc/codex-bot"
+Documentation = "https://codexdlc.github.io/codex-bot/"
+Repository = "https://github.com/codexdlc/codex-bot"
+Changelog = "https://github.com/codexdlc/codex-bot/blob/main/CHANGELOG.md"
+Issues = "https://github.com/codexdlc/codex-bot/issues"
+
 [project.optional-dependencies]
 redis = ["redis[asyncio]>=5.0,<6.0"]
 arq = ["arq>=0.25"]

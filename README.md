@@ -55,8 +55,8 @@ builder.run_polling()
 
 ## 📚 Documentation
 
-- [English Documentation](https://codex-team.github.io/codex_bot/en_EN/)
-- [Русская документация](https://codex-team.github.io/codex_bot/ru_RU/)
+- [English Documentation](https://codexdlc.github.io/codex-bot/en_EN/)
+- [Русская документация](https://codexdlc.github.io/codex-bot/ru_RU/)
 - [**Changelog**](CHANGELOG.md) — see what's new in the latest versions.
 
 ---
