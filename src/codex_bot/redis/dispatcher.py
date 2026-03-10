@@ -123,12 +123,13 @@ class BotRedisDispatcher:
 
         return decorator
 
-    async def process_message(self, message_data: dict[str, Any]) -> None:
+    async def process_message(self, message_data: dict[str, Any], stream_name: str = "bot_events") -> None:
         """
         Dispatches an incoming Redis Stream message.
 
         Args:
             message_data: Message payload. Required field: ``"type"``.
+            stream_name: Redis Stream name for retry scheduling. Defaults to ``"bot_events"``.
         """
         if not self._container:
             log.error("BotRedisDispatcher | container not set — call setup() first")
@@ -155,7 +156,7 @@ class BotRedisDispatcher:
                 if self._retry_scheduler:
                     try:
                         await self._retry_scheduler.schedule_retry(
-                            stream_name="bot_events",
+                            stream_name=stream_name,
                             payload=message_data,
                             delay=60,
                         )
