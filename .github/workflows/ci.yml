@@ -10,7 +10,7 @@ on:
 
 jobs:
   lint:
-    name: Lint & Type Check
+    name: Lint & Format
     runs-on: ubuntu-latest
 
     steps:
@@ -21,22 +21,54 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install dev dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e ".[dev,all]"
 
-      - name: Ruff lint
-        run: ruff check src/
+      - name: Run lint
+        run: python tools/dev/check.py --lint
 
-      - name: Ruff format check
-        run: ruff format --check src/
+  types:
+    name: Type Check
+    runs-on: ubuntu-latest
 
-      - name: Mypy
-        run: mypy src/codex_bot/
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Bandit security scan
-        run: bandit -r src/codex_bot/ -c pyproject.toml
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,all]"
+
+      - name: Run mypy
+        run: python tools/dev/check.py --types
+
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,all]"
+          pip install pip-audit
+
+      - name: Run security audit
+        run: python tools/dev/check.py --security
 
   build:
     name: Build check
@@ -75,4 +107,4 @@ jobs:
           pip install -e ".[dev,all]"
 
       - name: Run tests
-        run: pytest -m unit --tb=short
+        run: python tools/dev/check.py --tests
