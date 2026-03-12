@@ -1,0 +1,31 @@
+"""
+Internal Package Launcher for {{ project_name }}.
+This module is responsible for initializing the core components and starting the app.
+"""
+
+from codex_bot.engine.runner import run_bot_app
+from .core.config import BotSettings
+from .core.container import BotContainer
+from .core.factory import build_bot
+
+{% if use_loguru %}
+from .core.logging import setup_logging
+{% endif %}
+
+def run() -> None:
+    """
+    Launches the bot application.
+    Expected to be called from the root manage.py script.
+    """
+    settings = BotSettings()
+
+    run_bot_app(
+        settings=settings,
+        container_class=BotContainer,
+        bot_factory=build_bot,
+        {% if use_loguru %}
+        setup_logging_func=setup_logging
+        {% else %}
+        setup_logging_func=None
+        {% endif %}
+    )

@@ -1,0 +1,109 @@
+import asyncio
+{% if use_loguru %}
+from loguru import logger as log
+{% else %}
+import logging
+log = logging.getLogger(__name__)
+{% endif %}
+
+from typing import Any, TYPE_CHECKING
+from aiogram import Bot
+
+from codex_bot.engine.container import BaseBotContainer
+from codex_bot.engine.discovery.service import FeatureDiscoveryService
+from codex_bot.sender.view_sender import ViewSender
+
+{% if use_redis %}
+from redis.asyncio import Redis
+from codex_bot.redis.dispatcher import BotRedisDispatcher
+from codex_bot.redis.stream_processor import RedisStreamProcessor
+{% endif %}
+
+{% if data_mode == 'direct' %}
+from sqlalchemy.ext.asyncio import AsyncEngine
+from codex_bot.engine.database.engine import build_engine
+from {{ project_name }}.infrastructure.database import create_session_factory
+{% endif %}
+
+from {{ project_name }}.core.config import BotSettings
+from {{ project_name }}.core.settings import INSTALLED_FEATURES, INSTALLED_REDIS_FEATURES
+
+class BotContainer(BaseBotContainer):
+    """
+    Project-specific Dependency Injection Container.
+    """
+    def __init__(self, settings: BotSettings, redis_client: Any | None = None):
+        super().__init__(settings)
+        self.redis_client = redis_client
+
+        # --- 1. Infrastructure ---
+        {% if use_redis_streams %}
+        self.redis_dispatcher = BotRedisDispatcher()
+        self.stream_processor = RedisStreamProcessor(
+            storage=redis_client,
+            stream_name="bot_events",
+            consumer_group_name="bot_group",
+            consumer_name=f"bot_worker_{settings.secret_key[:5]}"
+        )
+        {% endif %}
+
+        # --- 2. Data Providers ---
+        {% if data_mode == 'api' %}
+        self.feature_service = None
+        {% elif data_mode == 'direct' %}
+        self.db_engine: AsyncEngine = build_engine(
+            url=settings.database_url,
+            echo=settings.database_echo
+        )
+        self.session_factory = create_session_factory(self.db_engine)
+        self.feature_service = None
+        {% endif %}
+
+        # --- 3. Feature Discovery ---
+        {% if use_redis_streams %}
+        discovery_dispatcher = self.redis_dispatcher
+        {% else %}
+        discovery_dispatcher = None
+        {% endif %}
+
+        self.discovery_service = FeatureDiscoveryService(
+            installed_features=INSTALLED_FEATURES,
+            installed_redis_features=INSTALLED_REDIS_FEATURES,
+            redis_dispatcher=discovery_dispatcher,
+            # We explicitly pass the package prefix for correct module discovery
+            package_prefix="{{ project_name }}"
+        )
+        self.discovery_service.discover_all()
+
+        # Instantiate features
+        self.features = self.discovery_service.create_feature_orchestrators(self)
+
+    def set_bot(self, bot: Bot) -> None:
+        super().set_bot(bot)
+
+        {% if use_redis_streams %}
+        if self.redis_client:
+            self.redis_dispatcher.setup(container=self)
+            self.stream_processor.set_message_callback(self.redis_dispatcher.process_message)
+        {% endif %}
+
+    async def shutdown(self):
+        """Gracefully cleanup all infrastructure resources."""
+        log.info("Starting project container shutdown...")
+        cleanup_tasks = []
+
+        {% if data_mode == 'direct' %}
+        if hasattr(self, 'db_engine'):
+            cleanup_tasks.append(self.db_engine.dispose())
+        {% endif %}
+
+        {% if use_redis_streams %}
+        if hasattr(self, 'stream_processor'):
+            cleanup_tasks.append(self.stream_processor.stop())
+        {% endif %}
+
+        if cleanup_tasks:
+            await asyncio.gather(*cleanup_tasks, return_exceptions=True)
+
+        await super().shutdown()
+        log.info("Project container shutdown completed.")

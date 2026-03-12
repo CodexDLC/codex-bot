@@ -1,0 +1,18 @@
+"""
+Base model for '{{ project_name | default('CodexBot') }}' infrastructure.
+Inherits from the codex-bot library core models.
+"""
+
+from codex_bot.engine.database.models import Base, BaseModel
+
+# Global metadata registry for Alembic migrations
+metadata = Base.metadata
+
+# All project models should inherit from this ProjectBase
+# to automatically get ID and timestamps.
+class ProjectBase(BaseModel):
+    """
+    Base class for this project's models.
+    Can be extended with project-specific shared logic.
+    """
+    __abstract__ = True

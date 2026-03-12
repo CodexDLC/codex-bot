@@ -1,0 +1,19 @@
+from aiogram.fsm.state import State, StatesGroup
+
+# 1. State Definition
+class BotMenuStates(StatesGroup):
+    main = State()
+
+STATES = BotMenuStates
+
+# 2. Garbage Collector Settings
+GARBAGE_COLLECT = True
+
+# 3. Factory (DI)
+def create_orchestrator(container):
+    """
+    Factory function for the Menu Orchestrator.
+    bot_menu is a system feature and depends on DiscoveryService.
+    """
+    from .logic.orchestrator import BotMenuOrchestrator
+    return BotMenuOrchestrator()

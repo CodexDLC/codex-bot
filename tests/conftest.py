@@ -3,6 +3,16 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 
+def pytest_collection_modifyitems(items):
+    """
+    Automatically marks all tests as 'unit' if they are not marked as 'integration'.
+    This ensures that CI and local quality tools pick them up by default.
+    """
+    for item in items:
+        if "integration" not in item.keywords:
+            item.add_marker(pytest.mark.unit)
+
+
 @pytest.fixture
 def mock_bot():
     bot = MagicMock()

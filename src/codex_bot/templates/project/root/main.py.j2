@@ -1,0 +1,32 @@
+"""
+Main Launcher for {{ project_name | title }}.
+This file serves as the entry point for the entire service.
+"""
+
+import asyncio
+import logging
+import sys
+from pathlib import Path
+
+# 1. Ensure the 'src' directory is in the path for resolution
+root_path = Path(__file__).parent
+src_path = root_path / "src"
+if str(src_path) not in sys.path:
+    sys.path.insert(0, str(src_path))
+
+# 2. Import the main entry point from the isolated package
+try:
+    from {{ project_name }}.app_telegram import main
+except ImportError as e:
+    print(f"❌ Error: Could not import {{ project_name }}. Make sure 'src/{{ project_name }}' is a valid package.")
+    print(f"Details: {e}")
+    sys.exit(1)
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        pass
+    except Exception as e:
+        print(f"🔥 Critical Failure: {e}")
+        sys.exit(1)

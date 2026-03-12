@@ -1,0 +1,38 @@
+from aiogram.fsm.state import State, StatesGroup
+from typing import Any
+from .logic.orchestrator import StartOrchestrator
+from .ui.commands_ui import CommandsUI
+
+# 1. States Definition
+class CommandsStates(StatesGroup):
+    main = State()
+
+STATES = CommandsStates
+
+# 2. Garbage Collector Settings
+GARBAGE_COLLECT = False
+
+# 3. Menu Configuration
+# Usually, commands like /start are not shown in the main dashboard menu
+MENU_CONFIG = None
+
+# 4. Factory (DI)
+def create_orchestrator(container: Any) -> StartOrchestrator:
+    """
+    Creates the orchestrator instance.
+    """
+    # auth_provider should be registered in container or mocked here
+    auth_provider = getattr(container, 'auth_provider', None)
+
+    ui = CommandsUI()
+    return StartOrchestrator(
+        auth_provider=auth_provider,
+        settings=container.settings
+    )
+
+def get_router() -> Any:
+    """
+    Returns the aiogram router for this feature.
+    """
+    from .handlers.router import router
+    return router

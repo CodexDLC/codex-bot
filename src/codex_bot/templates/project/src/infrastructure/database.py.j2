@@ -1,0 +1,37 @@
+"""
+Database infrastructure for '{{ project_name | default('CodexBot') }}'.
+"""
+
+{% if use_loguru %}
+from loguru import logger as log
+{% else %}
+import logging
+log = logging.getLogger(__name__)
+{% endif %}
+
+from typing import AsyncGenerator
+from sqlalchemy.ext.asyncio import AsyncSession
+from codex_bot.engine.database.engine import build_engine, build_session_maker
+
+def create_db_engine(url: str, echo: bool = False):
+    """Creates a production-ready async engine."""
+    log.info(f"Initializing database engine: {url.split('@')[-1]}")
+    return build_engine(url=url, echo=echo)
+
+
+def create_session_factory(engine):
+    """Creates an async session factory."""
+    return build_session_maker(engine)
+
+
+async def get_session(session_factory) -> AsyncGenerator[AsyncSession, None]:
+    """Dependency helper for getting a database session."""
+    async with session_factory() as session:
+        try:
+            yield session
+        except Exception as e:
+            log.error(f"Database session error: {e}")
+            await session.rollback()
+            raise
+        finally:
+            await session.close()

@@ -1,0 +1,85 @@
+from typing import Any, TYPE_CHECKING
+import logging
+from codex_bot.base import BaseBotOrchestrator, UnifiedViewDTO, ViewResultDTO
+from ..ui.ui import BotMenuUI
+from ..resources.dto import MenuPayload
+
+{% if use_loguru %}
+from loguru import logger as log
+{% else %}
+import logging
+log = logging.getLogger(__name__)
+{% endif %}
+
+if TYPE_CHECKING:
+    from codex_bot.director import Director
+
+class BotMenuOrchestrator(BaseBotOrchestrator[MenuPayload]):
+    """
+    Universal Menu Orchestrator (Dashboard).
+    Discovers all features and renders navigation buttons.
+    """
+
+    def __init__(self):
+        super().__init__(expected_state=None)
+        self.ui = BotMenuUI()
+
+    async def handle_entry(
+        self,
+        director: "Director",
+        payload: Any = None,
+    ) -> UnifiedViewDTO:
+        """Entry point for the dashboard."""
+        mode = payload if isinstance(payload, str) else "bot_menu"
+        return await self.render_dashboard(director, mode=mode)
+
+    async def render_dashboard(self, director: "Director", mode: str = "bot_menu") -> UnifiedViewDTO:
+        """Collects buttons from all features and renders the UI."""
+        is_admin_mode = mode == "dashboard_admin"
+
+        # 1. Fetch available buttons from Discovery Service
+        discovery = director.container.discovery_service
+        available_features = discovery.get_menu_buttons(is_admin=is_admin_mode)
+
+        # 2. RBAC check for admin mode
+        if is_admin_mode and not director.container.is_admin(director.user_id):
+            log.warning(f"Access Denied to Admin Dashboard for user {director.user_id}")
+            return await self.render_dashboard(director, mode="bot_menu")
+
+        # 3. Render
+        menu_view = self.ui.render_dashboard(available_features, mode=mode)
+
+        return UnifiedViewDTO(
+            menu=menu_view,
+            content=None,
+            chat_id=director.chat_id,
+            session_key=director.user_id
+        )
+
+    async def handle_callback(self, director: "Director", payload: MenuPayload) -> UnifiedViewDTO | None:
+        """Handles dashboard interactions (switching modes or opening features)."""
+        if payload.action == "select":
+            target = payload.target or ""
+
+            # Dashboard mode switching
+            if target in ["dashboard_admin", "bot_menu"]:
+                return await self.render_dashboard(director, mode=target)
+
+            # Feature navigation
+            discovery = director.container.discovery_service
+            features_config = discovery.get_menu_buttons()
+            target_config = features_config.get(target)
+
+            if not target_config:
+                return None
+
+            # Check specific feature permissions
+            if target_config.get("is_admin") and not director.container.is_admin(director.user_id):
+                log.warning(f"Feature Access Denied: {target} for user {director.user_id}")
+                return None
+
+            # Use Director to transition to the selected feature
+            target_feature = target_config.get("target_state", target)
+            return await director.set_scene(feature=target_feature)
+
+        return None
