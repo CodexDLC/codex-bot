@@ -25,6 +25,49 @@
 
 ---
 
+## 💻 Пример реализации фичи
+
+Каждая функциональная область бота (фича) начинается с создания своего оркестратора.
+
+```python
+from pydantic import BaseModel
+from codex_bot.base.base_orchestrator import BaseBotOrchestrator
+from codex_bot.base.view_dto import ViewResultDTO
+from codex_bot.director import Director
+
+# 1. Описываем данные, которые нужны для отрисовки экрана
+class ProfilePayload(BaseModel):
+    user_id: int
+    is_premium: bool = False
+
+# 2. Создаем оркестратор для фичи "Профиль"
+class ProfileOrchestrator(BaseBotOrchestrator[ProfilePayload]):
+    def __init__(self):
+        # Указываем FSM-стейт, в который перейдет пользователь при входе в фичу
+        super().__init__(expected_state="ProfileStates:main")
+
+    async def render_content(
+        self,
+        payload: ProfilePayload,
+        director: Director
+    ) -> ViewResultDTO:
+        # Логика получения данных (например, из БД)
+        # Вся информация о пользователе доступна через director
+
+        text = (
+            f"👤 Профиль пользователя {payload.user_id}\n"
+            f"Статус: {'Premium' if payload.is_premium else 'Обычный'}"
+        )
+
+        # Возвращаем текст и клавиатуру (опционально)
+        return ViewResultDTO(
+            text=text,
+            kb=None # Здесь может быть InlineKeyboardMarkup
+        )
+```
+
+---
+
 ## 🗺️ Карта модуля
 
 | Компонент | Описание |
@@ -35,4 +78,4 @@
 
 ---
 
-**Последнее обновление:** 2025-02-07
+**Последнее обновление:** 2025-03-09

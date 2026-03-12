@@ -1,0 +1,44 @@
+"""
+Static configuration for the Telegram Bot '{{ project_name | default('CodexBot') }}'.
+Contains lists of features, middlewares, and other non-secret settings.
+"""
+
+# --- Telegram Features (Aiogram Routers) ---
+# List feature folder names from 'features/telegram/'
+INSTALLED_FEATURES: list[str] = [
+    "commands",
+    "bot_menu",
+]
+
+# --- Background Features (Redis Stream Listeners) ---
+# List feature folder names from 'features/redis/'
+INSTALLED_REDIS_FEATURES: list[str] = [
+    "errors",
+]
+
+# --- Bot Middlewares ---
+# List of middleware classes to be registered in the Dispatcher.
+# Core middlewares from codex-bot library are handled in factory.py
+MIDDLEWARE_CLASSES: list[str] = [
+    "codex_bot.engine.middlewares.ContainerMiddleware",
+    "codex_bot.engine.middlewares.UserValidationMiddleware",
+    "codex_bot.engine.middlewares.DirectorMiddleware",
+    {% if use_i18n %}
+    "codex_bot.engine.middlewares.i18n.I18nMiddleware",
+    {% endif %}
+    {% if use_redis %}
+    "codex_bot.engine.middlewares.ThrottlingMiddleware",
+    {% endif %}
+    {% if data_mode == 'direct' %}
+    "codex_bot.engine.middlewares.DatabaseTransactionMiddleware",
+    {% endif %}
+]
+
+{% if use_i18n %}
+# --- Localization ---
+DEFAULT_LOCALE: str = "ru"
+ALLOWED_LOCALES: list[str] = ["ru", "en", "de"]
+{% endif %}
+
+# --- System ---
+# You can add other static constants here

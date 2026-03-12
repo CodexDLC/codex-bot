@@ -25,6 +25,44 @@ The `FeatureDiscoveryService` automates the registration of features (routers, o
 
 ---
 
+## 💻 Bot Assembly Example
+
+`BotBuilder` allows you to assemble the bot and dispatcher while explicitly controlling the order of middleware connections.
+
+```python
+import asyncio
+from aiogram.fsm.storage.memory import MemoryStorage
+from codex_bot.engine.factory.bot_builder import BotBuilder
+from codex_bot.engine.middlewares.container import ContainerMiddleware
+from codex_bot.engine.middlewares.throttling import ThrottlingMiddleware
+
+async def main():
+    # 1. Initialize the builder
+    builder = BotBuilder(
+        bot_token="YOUR_TOKEN",
+        fsm_storage=MemoryStorage()
+    )
+
+    # 2. Add middlewares in the desired order
+    # (e.g., container first, then throttling)
+    builder.add_middleware(ContainerMiddleware(container=my_container))
+    builder.add_middleware(ThrottlingMiddleware(redis=redis_client))
+
+    # 3. Build the bot and dispatcher
+    bot, dp = builder.build()
+
+    # 4. Connect feature routers (via RouterBuilder)
+    # dp.include_router(main_router)
+
+    # 5. Start polling
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+---
+
 ## 🗺️ Module Map
 
 | Component | Description |
@@ -38,4 +76,4 @@ The `FeatureDiscoveryService` automates the registration of features (routers, o
 
 ---
 
-**Last Updated:** 2025-02-07
+**Last Updated:** 2025-03-09

@@ -1,0 +1,84 @@
+import pathlib
+from typing import Any
+from aiogram import Bot, Dispatcher
+from aiogram.fsm.storage.memory import MemoryStorage
+from codex_bot.engine.factory.bot_builder import BotBuilder
+from codex_bot.engine.middlewares import (
+    ContainerMiddleware,
+    DirectorMiddleware,
+    ThrottlingMiddleware,
+    UserValidationMiddleware,
+)
+from {{ project_name }}.core.config import BotSettings
+
+{% if use_loguru %}
+from loguru import logger as log
+{% else %}
+import logging
+log = logging.getLogger(__name__)
+{% endif %}
+
+{% if use_redis_fsm %}
+from aiogram.fsm.storage.redis import RedisStorage
+{% endif %}
+
+{% if data_mode == 'direct' %}
+from codex_bot.engine.middlewares.database import DatabaseTransactionMiddleware
+{% endif %}
+
+{% if use_i18n %}
+from aiogram_i18n import I18nMiddleware
+from aiogram_i18n.cores import FluentRuntimeCore
+from codex_bot.engine.middlewares.i18n import FSMContextI18nManager
+{% endif %}
+
+
+def build_bot(
+    settings: BotSettings,
+    redis_client: Any | None,
+    container: Any
+) -> tuple[Bot, Dispatcher]:
+    """
+    Builds and configures Bot and Dispatcher.
+    """
+    # 1. FSM Storage Selection
+    {% if use_redis_fsm %}
+    storage = RedisStorage(redis=redis_client) if redis_client else MemoryStorage()
+    {% else %}
+    storage = MemoryStorage()
+    {% endif %}
+
+    # 2. Initialize Builder
+    builder = BotBuilder(
+        bot_token=settings.bot_token,
+        fsm_storage=storage,
+    )
+
+    # --- 3. Register Library Middlewares ---
+    builder.add_middleware(ContainerMiddleware(container=container))
+    builder.add_middleware(UserValidationMiddleware(container=container))
+    builder.add_middleware(DirectorMiddleware())
+
+    {% if use_i18n %}
+    locales_path = pathlib.Path(__file__).parent.parent / "resources" / "locales"
+    i18n_middleware = I18nMiddleware(
+        core=FluentRuntimeCore(path=str(locales_path) + "/{locale}"),
+        default_locale=getattr(settings, "DEFAULT_LOCALE", "ru"),
+        manager=FSMContextI18nManager(),
+    )
+    builder.add_middleware(i18n_middleware)
+    {% endif %}
+
+    {% if data_mode == 'direct' %}
+    builder.add_middleware(DatabaseTransactionMiddleware(session_maker=container.session_factory))
+    {% endif %}
+
+    {% if use_redis %}
+    if redis_client:
+        builder.add_middleware(ThrottlingMiddleware(redis=redis_client, rate_limit=1.0))
+    {% endif %}
+
+    # --- 4. Build Core ---
+    bot, dp = builder.build()
+
+    return bot, dp

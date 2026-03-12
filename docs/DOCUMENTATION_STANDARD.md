@@ -1,142 +1,68 @@
-# 🧭 Documentation Standard for codex-bot
+# Стандарты документации проекта Codex Tools
 
-> **AUTHORITY:** This document defines how documentation is written, structured, and maintained in the `codex-bot` library.
+## 1. 📂 Общая структура разделов (Domain-Driven Structure)
+Мы делим документацию не по файлам кода, а по **Назначению (Domain/Service)**, чтобы структура была готова к превращению в монорепо или набор отдельных библиотек.
 
----
-
-## 1. 📜 Core Philosophy
-
-We maintain documentation in **two languages** to ensure international accessibility while keeping the local community engaged.
-
-### 🇬🇧 English (Primary / Technical Truth)
-
-- **Mandatory for:** All Pull Requests and technical specifications.
-- **Location:**
-  - `docs/api/` — Technical API reference (auto-generated from docstrings).
-  - `docs/en_EN/` — Conceptual guides and architectural mirroring.
-- **Content:**
-  - Full technical specifications.
-  - API documentation (via `docs/api/`).
-  - Code examples and integration guides.
-- **Goal:** Single source of truth. If code contradicts EN docs, it is a bug.
-
-### 🇷🇺 Russian (Secondary / Conceptual Hub)
-
-- **Optional for Contributors:** If you don't speak Russian, write EN docs. Maintainers will add RU translation.
-- **Location:** `docs/ru_RU/` (mirrors folder structure).
-- **Content:**
-  - Conceptual translation (the "why" and "how").
-  - Links to `docs/api/` for technical details instead of duplication.
-  - Architect's mental model and design decision explanations.
-- **Goal:** Help Russian-speaking developers understand the "why" behind the framework's architecture.
+| Раздел (RU/EN) | Описание | Состав (примеры) |
+| :--- | :--- | :--- |
+| architecture/domains/ | Чистая бизнес-логика (Ядро) | booking, calculator, calendar |
+| architecture/services/ | Инфраструктурные сервисы | llm, notifications, worker, redis |
+| architecture/platform/ | Базовые утилиты и конфиги | common, core, settings, schemas |
+| architecture/adapters/ | Мосты к фреймворкам | django, arq |
 
 ---
 
-## 2. ☯️ Twin Realms Principle
+## 2. 🛠 API Reference (docs/api/) — Зеркало кода
+Здесь используются Markdown-файлы на каждый ключевой Python-модуль. Структура в `docs/api/` должна полностью повторять путь в `src/`.
 
-Documentation languages serve different purposes:
-
-### 🇬🇧 EN = Technical Truth
-
-- **For:** AI generators, external libraries, standards compliance.
-- **Format:** Granular (mirrors `src/codex_bot/` structure).
-- **Contains:**
-  - API Reference (in `docs/api/`).
-  - Mermaid Diagrams (Sequence, Class, ER).
-  - Integration patterns.
-
-### 🇷🇺 RU = Architect's Mind
-
-- **For:** Human developers, system understanding.
-- **Format:** Aggregated (1 folder = 1 README).
-- **Contains:**
-  - **The Why:** Why this solution (e.g., why Stateless Orchestrators) was chosen.
-  - **The Flow:** How data flows through the system (simplified).
-  - **Links:** References to `docs/api/` files for technical details.
+- **Иерархия:** Если в коде есть `src/codex_tools/booking/chain_finder.py`, то в API будет `docs/api/booking/chain_finder.md`.
+- **Группировка:** В меню MkDocs это выглядит как: `API Reference -> booking -> chain_finder`.
+- **Наполнение:** Каждый файл содержит директиву `::: codex_tools.module_name`, которая автоматически вытягивает классы и функции из кода.
 
 ---
 
-## 3. 🗂️ Structure Mirroring Rule
+## 3. 🗺 Architecture Guides — Зеркало логики
+Здесь мы описываем **Домен целиком**, чтобы была видна общая картина взаимодействия.
 
-Documentation structure **MUST** mirror the code structure in `src/codex_bot/`.
-
-### Mapping Example
-
-| Code Location | Documentation Location (EN/RU) |
-|:---|:---|
-| `src/codex_bot/base/` | `docs/[lang]/architecture/base/` |
-| `src/codex_bot/engine/router_builder/` | `docs/[lang]/architecture/engine/router_builder/` |
-| `src/codex_bot/redis/` | `docs/[lang]/architecture/redis/` |
-
-### Why?
-
-- **1:1 Mapping:** Easy to find docs for any code module.
-- **No Orphans:** Prevents documentation from getting lost.
-- **Refactoring Safety:** When code moves, docs move with it.
+Внутри `architecture/domains/` (или `services/`):
+- **Папка на Домен:** Создаем подпапку для каждого крупного узла (например, `architecture/domains/booking/`).
+- **Файлы внутри:**
+    - `README.md` — Входная точка: общая схема, назначение домена, быстрый старт.
+    - `logic_deep_dive.md` — (Опционально) Детальное описание сложных алгоритмов (например, `ChainFinder`).
+    - `data_flow.md` — Схема прохождения данных (от DTO до ответа).
 
 ---
 
-## 4. 🧭 Navigation Standard
+## 4. 🧭 Обновленный маппинг (Пример)
 
-Every documentation file must be easily navigable.
+| Тип контента | Путь в коде | Путь в Docs (RU/EN) | Стиль изложения |
+| :--- | :--- | :--- | :--- |
+| **API** | `booking/dto.py` | `docs/api/booking/dto.md` | Справочник: поля, типы, валидация. |
+| **API** | `booking/chain_finder.py` | `docs/api/booking/chain_finder.md` | Справочник: аргументы методов, возвращаемые значения. |
+| **Архитектура** | `booking/` | `docs/[lang]/architecture/domains/booking/README.md` | Гайд: как использовать эти DTO и Finder вместе. |
 
-### Breadcrumbs (Mandatory)
+---
 
-Every file **MUST** start with a navigation header:
+## 5. 🚀 Evolution (Roadmap & Tasks)
+Для управления развитием проекта используется папка `docs/evolution/`. Она идентична в RU и EN версиях.
+
+- **Roadmap:** `docs/evolution/roadmap.md` — Глобальный план развития.
+- **Tasks:** `docs/evolution/tasks/[domain_name]/[task_name].md` — Конкретные задачи.
+- **Связь с архитектурой:** Каждая задача должна ссылаться на текущую архитектуру или API, которые она меняет.
+    - *Пример:* `Affected API: [api/llm/protocol.md](../../../api/llm/protocol.md)`.
+
+---
+
+## 6. ☯️ Правило Зеркальности (Strict Mirroring)
+RU и EN папки должны быть структурно идентичны.
+Если в `docs/en_EN/architecture/domains/booking.md` добавлена новая схема — она обязана появиться в `docs/ru_RU/...`.
+Технические детали (типы, аргументы) не копируются, а указываются ссылкой на **API Reference**.
+
+---
+
+## 7. 🧭 Навигационный стандарт (Breadcrumbs)
+В начале каждого файла обязательна навигация для удобства перемещения:
 
 ```markdown
-[⬅️ Back](../README.md) | [🏠 Docs Root](../../README.md)
+[⬅️ Назад к разделу](../README.md) | [🗺 Roadmap](../../evolution/roadmap.md) | [🏠 Главная](../../../README.md)
 ```
-
-- **Back:** Links to the current directory's `README.md`.
-- **Docs Root:** Links to the documentation root (`docs/README.md`).
-
-### Index Files (README.md)
-
-Every directory **MUST** have a `README.md` acting as a navigation hub.
-
-**Required Structure:**
-
-1. **Header:** Emoji 📂 + Section Name.
-2. **Navigation:** Breadcrumbs.
-3. **Description:** Short summary (2-3 sentences).
-4. **Map:** Table or list of files in **logical reading order** (not alphabetical).
-
----
-
-## 5. 📝 File Naming & Organization
-
-### Naming Conventions
-
-- **Format:** `snake_case.md` (e.g., `orchestrator_logic.md`).
-- **No Prefixes:** Do NOT use `01_`, `02_` prefixes in filenames.
-- **Reading Order:** Defined in `README.md` map.
-
-### Language Folders
-
-All documents **MUST** reside in:
-
-- `docs/api/` (Technical EN)
-- `docs/en_EN/` (Conceptual EN)
-- `docs/ru_RU/` (Conceptual RU)
-
----
-
-## 6. ✅ Markdown Linting Rules (Strict)
-
-1. **MD047 (End with Newline):** Every file must end with exactly **one newline** (`\n`).
-2. **MD032 (List Spacing):** Blank line before and after any list.
-3. **MD007 (Indentation):** Use **2 spaces** for nested lists.
-
----
-
-## 7. 🚫 Common Mistakes
-
-- **❌ Duplicating Code in RU Docs:** Link to `docs/api/` instead.
-- **❌ Numbered Prefixes:** Use `README.md` map for order.
-- **❌ Missing Breadcrumbs:** Always add the navigation header.
-- **❌ Language-neutral folders:** Use `en_EN` or `ru_RU`.
-
----
-
-**Last Updated:** 2025-02-07

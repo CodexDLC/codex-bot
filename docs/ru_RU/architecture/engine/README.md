@@ -25,6 +25,44 @@
 
 ---
 
+## 💻 Пример сборки бота
+
+`BotBuilder` позволяет собрать бота и диспетчер, явно контролируя порядок подключения мидлварей.
+
+```python
+import asyncio
+from aiogram.fsm.storage.memory import MemoryStorage
+from codex_bot.engine.factory.bot_builder import BotBuilder
+from codex_bot.engine.middlewares.container import ContainerMiddleware
+from codex_bot.engine.middlewares.throttling import ThrottlingMiddleware
+
+async def main():
+    # 1. Инициализируем билдер
+    builder = BotBuilder(
+        bot_token="YOUR_TOKEN",
+        fsm_storage=MemoryStorage()
+    )
+
+    # 2. Добавляем мидлвари в нужном порядке
+    # (например, сначала контейнер, потом троттлинг)
+    builder.add_middleware(ContainerMiddleware(container=my_container))
+    builder.add_middleware(ThrottlingMiddleware(redis=redis_client))
+
+    # 3. Собираем бота и диспетчер
+    bot, dp = builder.build()
+
+    # 4. Подключаем роутеры фич (через RouterBuilder)
+    # dp.include_router(main_router)
+
+    # 5. Запускаем
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+---
+
 ## 🗺️ Карта модуля
 
 | Компонент | Описание |
@@ -38,4 +76,4 @@
 
 ---
 
-**Последнее обновление:** 2025-02-07
+**Последнее обновление:** 2025-03-09

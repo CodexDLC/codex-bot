@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "{{ project_name }}"
+version = "0.1.0"
+description = "Telegram Bot generated via codex-bot"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiogram>=3.4",
+    "pydantic-settings>=2.0",
+    "codex-bot",
+    {% if use_loguru %}
+    "loguru>=0.7.0",
+    {% endif %}
+    {% if use_i18n %}
+    "aiogram-i18n>=1.4",
+    {% endif %}
+    {% if use_redis %}
+    "redis[asyncio]>=5.0",
+    {% endif %}
+    {% if data_mode == 'direct' %}
+    "sqlalchemy>=2.0",
+    "alembic>=1.18.0",
+    "aiosqlite>=0.19.0",
+    {% endif %}
+]
+
+[project.scripts]
+run-bot = "{{ project_name }}.app_telegram:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/{{ project_name }}"]

@@ -5,7 +5,13 @@ Reusable infrastructure for Telegram bots with stateless UI management,
 Redis Stream integration, and advanced FSM capabilities.
 """
 
-__version__ = "0.1.1"
+import importlib.metadata
+
+try:
+    __version__ = importlib.metadata.version("codex-bot")
+except importlib.metadata.PackageNotFoundError:
+    __version__ = "unknown"
+
 __author__ = "Codex Team"
 __license__ = "MIT"
 

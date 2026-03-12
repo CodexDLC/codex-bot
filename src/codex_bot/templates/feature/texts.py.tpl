@@ -1,6 +1,0 @@
-class {class_name}Texts:
-    """Text constants for the {class_name} feature."""
-    TITLE = "👋 <b>{class_name}</b>"
-    DESCRIPTION = "This is the starting screen of the {class_name} feature."
-    BUTTON_ACTION = "Click me"
-    BUTTON_BACK = "🔙 Back"

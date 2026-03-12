@@ -26,6 +26,40 @@ The `RedisStreamProcessor` uses **Redis Consumer Groups** to ensure that every m
 
 ---
 
+## 💻 Redis Streams Example
+
+Using Redis Streams allows you to handle background events (e.g., notifications from a backend) asynchronously.
+
+```python
+from codex_bot.redis.router import RedisRouter
+from codex_bot.redis.dispatcher import BotRedisDispatcher
+from codex_bot.redis.stream_processor import RedisStreamProcessor
+
+# 1. Create a router for Redis events
+redis_router = RedisRouter()
+
+# 2. Register a handler for the "order_created" event type
+@redis_router.on_event("order_created")
+async def on_order_created(payload: dict, container: MyContainer):
+    # Logic for handling the event (e.g., sending a message to the user)
+    user_id = payload["user_id"]
+    await container.sender.send_text(user_id, "✅ Your order has been created!")
+
+# 3. Configure the stream processor
+processor = RedisStreamProcessor(
+    redis=redis_client,
+    stream_name="bot_events",
+    group_name="bot_service",
+    consumer_name="worker_1",
+    dispatcher=BotRedisDispatcher(router=redis_router, container=my_container)
+)
+
+# 4. Run in the main loop
+# asyncio.create_task(processor.run())
+```
+
+---
+
 ## 🗺️ Module Map
 
 | Component | Description |
@@ -37,4 +71,4 @@ The `RedisStreamProcessor` uses **Redis Consumer Groups** to ensure that every m
 
 ---
 
-**Last Updated:** 2025-02-07
+**Last Updated:** 2025-03-09

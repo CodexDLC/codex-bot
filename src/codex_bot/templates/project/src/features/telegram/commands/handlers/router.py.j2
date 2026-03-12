@@ -1,0 +1,35 @@
+from aiogram import Router
+from aiogram.filters import CommandStart
+from aiogram.fsm.context import FSMContext
+from aiogram.types import Message
+from codex_bot.director.director import Director
+
+router = Router(name="commands_router")
+
+@router.message(CommandStart())
+async def cmd_start(message: Message, state: FSMContext, container: Any):
+    """
+    Handles the /start command.
+    """
+    if not message.from_user:
+        return
+
+    orchestrator = container.features.get("commands")
+    if not orchestrator:
+        return
+
+    # Initialize Director
+    director = Director(
+        container=container,
+        state=state,
+        user_id=message.from_user.id,
+        chat_id=message.chat.id,
+        trigger_id=message.message_id,
+    )
+
+    # Call orchestrator entry point
+    view_dto = await orchestrator.handle_entry(director, payload=message.from_user)
+
+    # Send response via ViewSender
+    if view_dto and container.view_sender:
+        await container.view_sender.send(view_dto)

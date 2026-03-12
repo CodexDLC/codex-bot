@@ -1,0 +1,12 @@
+"""
+Callback Data for basic bot commands.
+"""
+from aiogram.filters.callback_data import CallbackData
+
+class SystemCallback(CallbackData, prefix="sys"):
+    """Global callback for system actions."""
+    action: str  # "logout", "main_menu"
+
+class SettingsCallback(CallbackData, prefix="cmd_settings"):
+    """Callback for settings menu."""
+    action: str  # "open", "toggle_notifications", "change_language"

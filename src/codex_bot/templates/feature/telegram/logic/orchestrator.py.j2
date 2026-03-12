@@ -1,0 +1,37 @@
+from typing import Any, TYPE_CHECKING
+
+{% if use_loguru %}
+from loguru import logger as log
+{% else %}
+import logging
+log = logging.getLogger(__name__)
+{% endif %}
+
+from codex_bot.base import BaseBotOrchestrator, UnifiedViewDTO, ViewResultDTO
+from ..ui.ui import {{ class_name }}UI
+from ..feature_setting import {{ class_name }}States
+
+if TYPE_CHECKING:
+    from codex_bot.director import Director
+
+
+class {{ class_name }}Orchestrator(BaseBotOrchestrator[Any]):
+    """
+    Business logic and navigation for the {{ class_name }} feature.
+    """
+    def __init__(self):
+        super().__init__(expected_state={{ class_name }}States.main)
+        self.ui = {{ class_name }}UI()
+
+    async def handle_entry(
+        self,
+        director: "Director",
+        payload: Any = None,
+    ) -> UnifiedViewDTO:
+        """Entry point into the feature. Called by Director on set_scene()."""
+        log.debug(f"{{ class_name }} | Action: Entry | user_id={director.user_id}")
+        return await self.render(payload, director)
+
+    async def render_content(self, payload: Any, director: "Director") -> ViewResultDTO:
+        """Content rendering logic. Override to implement feature UI."""
+        return self.ui.render_main(payload)

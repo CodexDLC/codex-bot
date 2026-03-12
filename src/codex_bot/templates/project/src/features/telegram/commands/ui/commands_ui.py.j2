@@ -1,0 +1,29 @@
+from codex_bot.base import ViewResultDTO
+from ..resources.keyboards import build_welcome_keyboard
+
+{% if use_i18n %}
+from aiogram_i18n import I18nContext
+{% endif %}
+
+class CommandsUI:
+    """
+    Renders UI elements for system commands.
+    """
+
+    def render_welcome_screen(self, name: str, is_admin: bool = False) -> ViewResultDTO:
+        """
+        Renders the initial greeting message.
+        """
+        {% if use_i18n %}
+        i18n = I18nContext.get_current()
+        text = i18n.welcome.admin(name=name) if is_admin else i18n.welcome.user(name=name)
+        {% else %}
+        if is_admin:
+            text = f"<b>👋 Welcome, Admin {name}!</b>\nYou have full access."
+        else:
+            text = f"<b>👋 Welcome, {name}!</b>\nGlad to see you here."
+        {% endif %}
+
+        keyboard = build_welcome_keyboard(is_admin=is_admin)
+
+        return ViewResultDTO(text=text, kb=keyboard)

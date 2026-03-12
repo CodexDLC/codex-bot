@@ -25,6 +25,37 @@
 
 ---
 
+## 💻 Пример автоматической очистки UI
+
+`GarbageStateRegistry` позволяет автоматически удалять текстовые сообщения пользователя в тех состояниях, где бот ожидает только нажатия кнопок.
+
+```python
+from codex_bot.fsm.garbage_collector import GarbageStateRegistry
+from codex_bot.fsm.state_manager import BaseStateManager
+
+# 1. Регистрируем состояния, в которых нужно удалять текстовый мусор
+garbage_registry = GarbageStateRegistry()
+garbage_registry.register_states([
+    "BookingStates:main",
+    "ProfileStates:edit_photo"
+])
+
+# 2. В хендлере (автоматически через RouterBuilder)
+# Если пользователь напишет текст в стейте "BookingStates:main",
+# бот просто удалит это сообщение, сохраняя интерфейс чистым.
+
+# 3. Использование изолированного хранилища данных фичи
+class BookingStateManager(BaseStateManager[BookingPayload]):
+    namespace = "booking"
+
+# В оркестраторе:
+# state_manager = BookingStateManager(director.state)
+# await state_manager.update(BookingPayload(service_id=42))
+# data = await state_manager.get_payload() # Вернет только данные "booking"
+```
+
+---
+
 ## 🗺️ Карта модуля
 
 | Компонент | Описание |
@@ -35,4 +66,4 @@
 
 ---
 
-**Последнее обновление:** 2025-02-07
+**Последнее обновление:** 2025-03-09

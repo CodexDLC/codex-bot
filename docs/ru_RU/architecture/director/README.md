@@ -27,6 +27,51 @@
 
 ---
 
+## 💻 Пример использования
+
+В типичном сценарии `Director` используется внутри хендлера Aiogram для переключения пользователя на новую функциональную область (фичу).
+
+```python
+from aiogram import Router, F
+from aiogram.types import CallbackQuery
+from aiogram.fsm.context import FSMContext
+
+from codex_bot.director import Director
+from codex_bot.sender.view_sender import ViewSender
+
+router = Router()
+
+@router.callback_query(F.data == "start_booking")
+async def on_booking_click(
+    callback: CallbackQuery,
+    state: FSMContext,
+    container: MyContainer, # Ваш DI-контейнер
+    sender: ViewSender      # Сервис отправки сообщений
+):
+    # 1. Инициализируем Director для текущего запроса
+    director = Director(
+        container=container,
+        state=state,
+        user_id=callback.from_user.id,
+        chat_id=callback.message.chat.id,
+        trigger_id=callback.message.message_id # Для удаления старого сообщения
+    )
+
+    # 2. Переключаем сцену на "booking"
+    # Director сам найдет BookingOrchestrator в контейнере,
+    # установит нужный FSM-стейт и вызовет логику рендеринга.
+    view = await director.set_scene(
+        feature="booking",
+        payload={"service_id": 42} # Данные для инициализации фичи
+    )
+
+    # 3. Отправляем результат пользователю
+    if view:
+        await sender.send(view)
+```
+
+---
+
 ## 🗺️ Карта модуля
 
 | Компонент | Описание |
@@ -36,4 +81,4 @@
 
 ---
 
-**Последнее обновление:** 2025-02-07
+**Последнее обновление:** 2025-03-09
