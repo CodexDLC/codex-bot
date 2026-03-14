@@ -1,6 +1,8 @@
 """
-Developer utilities for codex-bot.
-Provides tools for inspecting Telegram IDs and other debug tasks.
+Developer Connectivity Tools — Telegram ID inspection utilities.
+
+Provides a runtime polling loop to intercept and display User, Chat, and
+Channel IDs to facilitate proper routing configuration during development.
 """
 
 from __future__ import annotations
@@ -20,7 +22,11 @@ router = Router()
 
 @router.message()
 async def handle_any_message(message: types.Message) -> None:
-    """Prints IDs from any private/group message."""
+    """Prints IDs from any private/group message.
+
+    Args:
+        message: The incoming message object.
+    """
     if not message.from_user:
         return
 
@@ -35,13 +41,22 @@ async def handle_any_message(message: types.Message) -> None:
 
 @router.channel_post()
 async def handle_channel_post(message: types.Message) -> None:
-    """Prints IDs from channel posts (if bot is admin)."""
+    """Prints IDs from channel posts (if bot is admin).
+
+    Args:
+        message: The incoming channel post.
+    """
     print(f"\n📢 [CHANNEL]  Title: {message.chat.title}")
     print(f"🆔 [CHAT_ID]  {message.chat.id}")
     print("-" * 30)
 
 
 async def _start_inspector(token: str) -> None:
+    """Starts the ID inspection polling loop.
+
+    Args:
+        token: Telegram Bot Token.
+    """
     bot = Bot(token=token)
     dp = Dispatcher()
     dp.include_router(router)
@@ -63,38 +78,47 @@ async def _start_inspector(token: str) -> None:
 
 
 def inspect_ids_command(args: Namespace) -> None:
-    """Entry point for the inspect command with robust token lookup."""
+    """Entry point for the inspect command with robust token lookup.
+
+    Args:
+        args: Argparse namespace with optional 'token' field.
+    """
     token = args.token
 
     if not token:
-        # 1. Try to load from current directory
-        env_path = Path.cwd() / ".env"
-        if env_path.exists():
+        found_envs: list[Path] = []
+
+        # Check current and common parent directories for .env
+        paths_to_check = [
+            Path.cwd() / ".env",
+            Path.cwd().parent / ".env",
+            Path.cwd().parent.parent / ".env",
+        ]
+
+        for p in paths_to_check:
+            if p.exists():
+                found_envs.append(p)
+
+        if not found_envs:
+            pass  # Handle below
+        else:
+            if len(found_envs) > 1:
+                print("⚠️  Warning: Multiple .env files found:")
+                for p in found_envs:
+                    print(f"   - {p}")
+                print(f"ℹ️  Using the first one: {found_envs[0]}\n")
+
             from dotenv import load_dotenv
 
-            load_dotenv(dotenv_path=env_path)
+            load_dotenv(dotenv_path=found_envs[0])
             token = os.getenv("BOT_TOKEN")
-            if token:
-                print(f"ℹ️  Token loaded from: {env_path}")
-        else:
-            # 2. Try common package structure
-            parent_env = Path.cwd().parent.parent / ".env"
-            if parent_env.exists():
-                from dotenv import load_dotenv
 
-                load_dotenv(dotenv_path=parent_env)
-                token = os.getenv("BOT_TOKEN")
-                if token:
-                    print(f"ℹ️  Token loaded from parent: {parent_env}")
-
-    # Bandit: ignore B105 as this is a placeholder string
     if not token or token == "your_bot_token_here":  # nosec B105
         print("\n❌ Error: Telegram Bot Token not found.")
-        print(f"Current Path: {Path.cwd()}")
+        print(f"Search Path: {Path.cwd()}")
         print("\nPossible solutions:")
         print("  1. Use --token YOUR_TOKEN")
         print("  2. Create a .env file with BOT_TOKEN=...")
-        print("  3. Run this command from the project root folder.")
         sys.exit(1)
 
     try:

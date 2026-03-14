@@ -1,34 +1,9 @@
 """
-ErrorOrchestrator — processes ``system_error`` Redis events and builds
-a ``UnifiedViewDTO`` ready for ``ViewSender.send()``.
+Error Orchestration — Redis-backed system error processing.
 
-Not a subclass of ``BaseBotOrchestrator`` — Redis error events have no
-Director or FSM context. The orchestrator extracts ``user_id`` and
-``chat_id`` directly from the Redis message payload.
-
-Expected ``message_data`` fields (from Redis Stream):
-    error_type (str, optional): Key into the errors map. Default: "default".
-    user_id (str | int, optional): Telegram user ID → ``session_key``.
-    chat_id (str | int, optional): Telegram chat ID.
-
-Example:
-    ```python
-    from codex_bot.features.errors import ErrorOrchestrator
-
-    orchestrator = ErrorOrchestrator(
-        custom_errors={
-            "payment_failed": {
-                "title": "Payment Failed",
-                "text": "Try again or contact support.",
-                "button_text": "Retry",
-                "action": "retry_payment",
-            }
-        }
-    )
-
-    # In container:
-    self.errors_orchestrator = orchestrator
-    ```
+Orchestrates the lifecycle of 'system_error' events originating from Redis
+Streams. Transforms raw event payloads into standardized `UnifiedViewDTO`
+objects, facilitating consistent UI error reporting across distributed services.
 """
 
 from __future__ import annotations

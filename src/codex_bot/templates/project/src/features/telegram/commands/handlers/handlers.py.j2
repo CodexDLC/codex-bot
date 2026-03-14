@@ -10,26 +10,44 @@ log = logging.getLogger(__name__)
 {% endif %}
 
 from codex_bot.director import Director
+from codex_bot.helper.id_inspector import inspect_ids_handler
 
 router = Router(name="commands_router")
 
 @router.message(CommandStart())
-async def cmd_start(message: Message, director: Director, container):
-    """Handles /start command."""
+async def cmd_start(message: Message, director: Director):
+    """
+    Handles /start command.
+
+    Uses 'Director' to transition to the main 'commands' or 'bot_menu' scene.
+    Director automatically handles state changes and passes context to the orchestrator.
+    """
     if not message.from_user:
         return
 
     log.info(f"Start command received from user {message.from_user.id}")
 
-    orchestrator = container.get_feature("commands")
-    view_dto = await orchestrator.handle_entry(director, payload=message.from_user)
+    # Launch the initial scene via Director
+    view_dto = await director.set_scene("commands", payload=message.from_user)
 
-    if view_dto and hasattr(container, "view_sender"):
-        await container.view_sender.send(view_dto)
+    if view_dto:
+        await director.container.view_sender.send(view_dto)
 
 
 @router.message(Command("menu"))
 async def cmd_menu(message: Message, director: Director):
-    """Direct access to the dashboard."""
+    """
+    Direct access to the dashboard.
+
+    Bypass manual orchestration and use 'set_scene' for standard transition.
+    """
     log.debug(f"Menu command received from user {message.from_user.id}")
-    await director.set_scene("bot_menu")
+
+    view_dto = await director.set_scene("bot_menu")
+    if view_dto:
+        await director.container.view_sender.send(view_dto)
+
+
+# --- Developer Tools ---
+# You can safely comment out or delete this command in production
+router.message(Command("id"))(inspect_ids_handler)

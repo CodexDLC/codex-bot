@@ -1,6 +1,9 @@
 """
-Main entry point for the codex-bot CLI.
-Uses a modular sub-command architecture with argparse.
+Codex-Bot CLI — The primary toolkit for framework orchestration.
+
+Provides a modular command-line interface for project scaffolding, feature
+generation, and database migration management. Uses an extensible sub-command
+architecture powered by `argparse`.
 """
 
 from __future__ import annotations

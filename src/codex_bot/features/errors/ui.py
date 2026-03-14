@@ -1,14 +1,9 @@
 """
-Error UI protocol and default implementation.
+Error UI Orchestration — Decoupled error rendering abstractions.
 
-``BaseErrorUI`` — structural Protocol (duck typing, no inheritance required).
-``DefaultErrorUI`` — renders ``ViewResultDTO`` from a config dict.
-
-The config dict keys:
-    title (str): Bold header text.
-    text (str): Body text.
-    button_text (str): Label of the action button.
-    action (str): Callback data for the button (e.g. "refresh", "nav:menu").
+Defines the structural contract and default implementation for error
+presentation. Decouples the error processing logic from the visual
+representation, allowing for customizable, themed error interfaces.
 """
 
 from __future__ import annotations

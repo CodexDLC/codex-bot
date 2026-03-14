@@ -1,31 +1,35 @@
 from typing import Any
-from codex_bot.base.base_orchestrator import BaseBotOrchestrator
-from codex_bot.base.view_dto import UnifiedViewDTO
-from codex_bot.director.director import Director
+from codex_bot.base import BaseBotOrchestrator, UnifiedViewDTO, ViewResultDTO
+from codex_bot.director import Director
 
-from ..ui.commands_ui import CommandsUI
 from ..contracts.auth_contract import AuthDataProvider
 
-class StartOrchestrator(BaseBotOrchestrator):
+
+class StartOrchestrator(BaseBotOrchestrator[Any]):
     """
     Welcome Screen Orchestrator.
-    Handles user registration and initial greeting.
+    Handles user registration and then delegates UI to the Dashboard.
     """
+
     def __init__(self, auth_provider: AuthDataProvider, settings: Any):
         super().__init__(expected_state=None)
         self.auth = auth_provider
         self.settings = settings
-        self.ui = CommandsUI()
+
+    async def render_content(self, payload: Any, director: Director) -> ViewResultDTO:
+        """
+        Required implementation.
+        StartOrchestrator mainly handles logic and redirects to Menu.
+        """
+        return ViewResultDTO(text="🚀 <b>Starting the bot...</b>")
 
     async def handle_entry(self, director: Director, payload: Any = None) -> UnifiedViewDTO:
         """
         Entry point for /start command.
-        Payload is expected to be an aiogram User object.
+        Registers the user and immediately redirects to 'bot_menu'.
         """
-        user_name = "User"
-
         if payload and hasattr(payload, 'id'):
-            # 1. Prepare user data for registration
+            # 1. Registration logic
             user_data = {
                 "telegram_id": payload.id,
                 "first_name": getattr(payload, 'first_name', ""),
@@ -33,25 +37,8 @@ class StartOrchestrator(BaseBotOrchestrator):
                 "last_name": getattr(payload, 'last_name', ""),
                 "language_code": getattr(payload, 'language_code', "ru"),
             }
-
-            # 2. Register user via provider (API or DB)
             await self.auth.upsert_user(user_data)
-            user_name = user_data["first_name"] or "User"
 
-        return await self.render_welcome(director, user_name=user_name)
-
-    async def render_welcome(self, director: Director, user_name: str = "User") -> UnifiedViewDTO:
-        """Renders the welcome screen."""
-        user_id = director.user_id
-
-        # Simple admin check (can be extended)
-        is_admin = user_id in getattr(self.settings, 'owner_ids_list', [])
-
-        menu_view = self.ui.render_welcome_screen(user_name, is_admin=is_admin)
-
-        return UnifiedViewDTO(
-            menu=menu_view,
-            clean_history=True,
-            chat_id=director.chat_id,
-            session_key=user_id
-        )
+        # 2. Redirect to Dashboard (Avoid duplication of UI logic)
+        # Director will handle the transition to 'bot_menu' orchestrator
+        return await director.set_scene("bot_menu")

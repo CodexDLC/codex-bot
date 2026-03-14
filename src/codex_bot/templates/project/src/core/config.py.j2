@@ -16,18 +16,26 @@ class BotSettings(BaseSettings):
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
     {% endif %}
 
-    # --- 2. Access Control ---
+    # --- 2. Bot Behavior ---
+    {% if use_redis %}
+    bot_throttling_rate: float = Field(default=1.0, alias="BOT_THROTTLING_RATE")
+    {% endif %}
+    bot_allowed_updates: list[str] = Field(
+        default=["message", "callback_query", "inline_query"],
+        alias="BOT_ALLOWED_UPDATES"
+    )
+
+    # --- 3. Access Control ---
     superuser_ids: str = Field(default="", alias="SUPERUSER_IDS")
     owner_ids: str = Field(default="", alias="OWNER_IDS")
 
     {% if data_mode == 'api' %}
-    # --- 3. API Mode Configuration ---
+    # --- 4. API Mode Configuration ---
     backend_api_url: str = Field(alias="BACKEND_API_URL")
     backend_api_key: str | None = Field(default=None, alias="BACKEND_API_KEY")
     backend_api_timeout: float = Field(default=10.0, alias="BACKEND_API_TIMEOUT")
     {% elif data_mode == 'direct' %}
-    # --- 4. Direct DB Configuration (SQLAlchemy) ---
-    # Default: Async SQLite (creates bot.db in the project root)
+    # --- 5. Direct DB Configuration (SQLAlchemy) ---
     database_url: str = Field(
         default="sqlite+aiosqlite:///./bot.db",
         alias="DATABASE_URL"
@@ -40,19 +48,24 @@ class BotSettings(BaseSettings):
         """Helper to convert comma-separated string to list of integers."""
         if not self.superuser_ids:
             return []
-        return [int(x.strip()) for x in self.superuser_ids.split(",") if x.strip()]
+        try:
+            return [int(x.strip()) for x in self.superuser_ids.split(",") if x.strip()]
+        except ValueError:
+            return []
 
     @property
     def owner_ids_list(self) -> list[int]:
         """Helper to convert comma-separated string to list of integers."""
         if not self.owner_ids:
             return []
-        return [int(x.strip()) for x in self.owner_ids.split(",") if x.strip()]
+        try:
+            return [int(x.strip()) for x in self.owner_ids.split(",") if x.strip()]
+        except ValueError:
+            return []
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
-        # Allow population by field name for testing
         populate_by_name=True,
     )

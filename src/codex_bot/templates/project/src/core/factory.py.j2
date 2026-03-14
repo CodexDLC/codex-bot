@@ -1,15 +1,10 @@
 import pathlib
-from typing import Any
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from codex_bot.engine.factory.bot_builder import BotBuilder
-from codex_bot.engine.middlewares import (
-    ContainerMiddleware,
-    DirectorMiddleware,
-    ThrottlingMiddleware,
-    UserValidationMiddleware,
-)
+from codex_bot.engine.protocols import ContainerProtocol
 from {{ project_name }}.core.config import BotSettings
+from {{ project_name }}.core.settings import CUSTOM_MIDDLEWARES{% if use_i18n %}, DEFAULT_LOCALE{% endif %}
 
 {% if use_loguru %}
 from loguru import logger as log
@@ -18,28 +13,33 @@ import logging
 log = logging.getLogger(__name__)
 {% endif %}
 
-{% if use_redis_fsm %}
-from aiogram.fsm.storage.redis import RedisStorage
+{% if use_redis %}
+from redis.asyncio import Redis
 {% endif %}
 
-{% if data_mode == 'direct' %}
-from codex_bot.engine.middlewares.database import DatabaseTransactionMiddleware
+{% if use_redis_fsm %}
+from aiogram.fsm.storage.redis import RedisStorage
 {% endif %}
 
 {% if use_i18n %}
 from aiogram_i18n import I18nMiddleware
 from aiogram_i18n.cores import FluentRuntimeCore
 from codex_bot.engine.middlewares.i18n import FSMContextI18nManager
+from codex_bot.engine.i18n.locales_compiler import compile_locales
 {% endif %}
 
 
 def build_bot(
     settings: BotSettings,
-    redis_client: Any | None,
-    container: Any
+    {% if use_redis %}
+    redis_client: Redis | None,
+    {% else %}
+    redis_client: None,
+    {% endif %}
+    container: ContainerProtocol
 ) -> tuple[Bot, Dispatcher]:
     """
-    Builds and configures Bot and Dispatcher.
+    Builds and configures Bot and Dispatcher using BotBuilder.
     """
     # 1. FSM Storage Selection
     {% if use_redis_fsm %}
@@ -54,31 +54,46 @@ def build_bot(
         fsm_storage=storage,
     )
 
-    # --- 3. Register Library Middlewares ---
-    builder.add_middleware(ContainerMiddleware(container=container))
-    builder.add_middleware(UserValidationMiddleware(container=container))
-    builder.add_middleware(DirectorMiddleware())
+    # --- 3. Register Middlewares (ORDER IS CRITICAL) ---
+
+    # A. Data Infrastructure (if enabled)
+    {% if data_mode == 'direct' %}
+    from codex_bot.engine.middlewares.database import DatabaseTransactionMiddleware
+    builder.add_project_middleware(DatabaseTransactionMiddleware(session_maker=container.session_factory))
+    {% endif %}
+
+    # B. MANDATORY CORE (Container, Director, UserValidation)
+    # The builder will automatically link the Bot instance to the Container.
+    builder.setup_core(container=container)
+
+    # C. Security & Localization (Optional)
+    {% if use_redis %}
+    from codex_bot.engine.middlewares.throttling import ThrottlingMiddleware
+    if redis_client:
+        builder.add_project_middleware(
+            ThrottlingMiddleware(redis=redis_client, rate_limit=settings.bot_throttling_rate)
+        )
+    {% endif %}
 
     {% if use_i18n %}
-    locales_path = pathlib.Path(__file__).parent.parent / "resources" / "locales"
+    # 1. Path to the features directory
+    features_path = pathlib.Path(__file__).parent.parent / "features"
+
+    # 2. Automatically collect and merge .ftl files from features into a tmp directory
+    compiled_path = compile_locales(features_path=features_path)
+
+    # 3. Initialize I18n Middleware with compiled path
     i18n_middleware = I18nMiddleware(
-        core=FluentRuntimeCore(path=str(locales_path) + "/{locale}"),
-        default_locale=getattr(settings, "DEFAULT_LOCALE", "ru"),
+        core=FluentRuntimeCore(path=compiled_path),
+        default_locale=DEFAULT_LOCALE,
         manager=FSMContextI18nManager(),
     )
-    builder.add_middleware(i18n_middleware)
+    builder.add_project_middleware(i18n_middleware)
     {% endif %}
 
-    {% if data_mode == 'direct' %}
-    builder.add_middleware(DatabaseTransactionMiddleware(session_maker=container.session_factory))
-    {% endif %}
-
-    {% if use_redis %}
-    if redis_client:
-        builder.add_middleware(ThrottlingMiddleware(redis=redis_client, rate_limit=1.0))
-    {% endif %}
+    # D. Register User Custom Middlewares
+    for mw in CUSTOM_MIDDLEWARES:
+        builder.add_project_middleware(mw)
 
     # --- 4. Build Core ---
-    bot, dp = builder.build()
-
-    return bot, dp
+    return builder.build()

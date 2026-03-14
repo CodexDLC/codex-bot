@@ -12,8 +12,14 @@ import jinja2
 
 
 class JinjaRenderer:
-    """
-    Handles rendering of templates with standard context and filters.
+    """Core engine for rendering framework templates with consistent context.
+
+    This class encapsulates Jinja2 environment configuration, custom filters,
+    and file serialization logic. It ensures that generated code adheres to
+    framework standards (e.g., PascalCase naming conventions).
+
+    Attributes:
+        env: The configured Jinja2 environment instance.
     """
 
     def __init__(self, templates_dir: Path):

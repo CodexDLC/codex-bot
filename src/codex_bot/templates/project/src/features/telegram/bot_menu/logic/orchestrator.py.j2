@@ -1,8 +1,6 @@
 from typing import Any, TYPE_CHECKING
-import logging
 from codex_bot.base import BaseBotOrchestrator, UnifiedViewDTO, ViewResultDTO
 from ..ui.ui import BotMenuUI
-from ..resources.dto import MenuPayload
 
 {% if use_loguru %}
 from loguru import logger as log
@@ -14,7 +12,8 @@ log = logging.getLogger(__name__)
 if TYPE_CHECKING:
     from codex_bot.director import Director
 
-class BotMenuOrchestrator(BaseBotOrchestrator[MenuPayload]):
+
+class BotMenuOrchestrator(BaseBotOrchestrator[Any]):
     """
     Universal Menu Orchestrator (Dashboard).
     Discovers all features and renders navigation buttons.
@@ -23,6 +22,17 @@ class BotMenuOrchestrator(BaseBotOrchestrator[MenuPayload]):
     def __init__(self):
         super().__init__(expected_state=None)
         self.ui = BotMenuUI()
+
+    async def render_content(
+        self,
+        director: "Director" | None = None,
+        payload: Any = None
+    ) -> ViewResultDTO:
+        """
+        Required implementation of BaseBotOrchestrator.
+        By default, the Dashboard is rendered via handle_entry and render_dashboard.
+        """
+        return ViewResultDTO(text="🤖 <b>Dashboard</b>\nChoose a feature below:")
 
     async def handle_entry(
         self,
@@ -51,35 +61,7 @@ class BotMenuOrchestrator(BaseBotOrchestrator[MenuPayload]):
 
         return UnifiedViewDTO(
             menu=menu_view,
-            content=None,
+            content=await self.render_content(director=director, payload=None),
             chat_id=director.chat_id,
             session_key=director.user_id
         )
-
-    async def handle_callback(self, director: "Director", payload: MenuPayload) -> UnifiedViewDTO | None:
-        """Handles dashboard interactions (switching modes or opening features)."""
-        if payload.action == "select":
-            target = payload.target or ""
-
-            # Dashboard mode switching
-            if target in ["dashboard_admin", "bot_menu"]:
-                return await self.render_dashboard(director, mode=target)
-
-            # Feature navigation
-            discovery = director.container.discovery_service
-            features_config = discovery.get_menu_buttons()
-            target_config = features_config.get(target)
-
-            if not target_config:
-                return None
-
-            # Check specific feature permissions
-            if target_config.get("is_admin") and not director.container.is_admin(director.user_id):
-                log.warning(f"Feature Access Denied: {target} for user {director.user_id}")
-                return None
-
-            # Use Director to transition to the selected feature
-            target_feature = target_config.get("target_state", target)
-            return await director.set_scene(feature=target_feature)
-
-        return None

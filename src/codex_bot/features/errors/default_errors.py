@@ -1,27 +1,9 @@
 """
-Default error configuration map for the built-in error feature.
+Default Error Schemas — Standard configuration map for system errors.
 
-Keys are error type strings sent in Redis ``system_error`` events.
-Each entry defines: ``title``, ``text``, ``button_text``, ``action``.
-
-Extend by passing ``custom_errors`` to ``ErrorOrchestrator`` — your entries
-win over the defaults on key collision.
-
-Example:
-    ```python
-    from codex_bot.features.errors import ErrorOrchestrator
-
-    orchestrator = ErrorOrchestrator(
-        custom_errors={
-            "payment_failed": {
-                "title": "Payment Failed",
-                "text": "Please try again or contact support.",
-                "button_text": "Retry",
-                "action": "retry_payment",
-            }
-        }
-    )
-    ```
+Provides a foundational set of error templates for common failure modes
+(NotFound, AccessDenied, Maintenance). Designed for easy extension via
+dictionary merging in the `ErrorOrchestrator`.
 """
 
 DEFAULT_ERRORS: dict[str, dict[str, str]] = {

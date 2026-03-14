@@ -1,9 +1,7 @@
 """
-codex_bot.features
-==================
-Built-in optional features for codex-bot projects.
+Modular Features - Framework-wide optional business logic orchestration.
 
-Available features:
-    errors: System error handling for Redis ``system_error`` events.
-            See ``codex_bot.features.errors``.
+Provides a centralized registry for pluggable business modules. Manages
+distributed feature resolution, specifically targeting specialized
+infrastructure tasks such as system-wide error reporting and state isolation.
 """

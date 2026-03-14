@@ -1,7 +1,7 @@
 from typing import Any
 
 from loguru import logger as log
-from codex_bot.base import UnifiedViewDTO
+from codex_bot.base import UnifiedViewDTO, ViewResultDTO
 
 
 class {class_name}Orchestrator:
@@ -10,7 +10,11 @@ class {class_name}Orchestrator:
     def __init__(self):
         pass
 
-    def handle_event(self, payload: dict[str, Any]) -> UnifiedViewDTO:
+    async def render_content(
+        self,
+        director: "Director" | None = None,
+        payload: Any = None
+    ) -> Union[ViewResultDTO, UnifiedViewDTO]:
         """Incoming data processing."""
         log.debug(f"{class_name}Orchestrator | Handling payload: {{payload}}")
         # Implement logic here

@@ -1,4 +1,8 @@
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, Union
+from codex_bot.base import BaseBotOrchestrator, UnifiedViewDTO, ViewResultDTO
+from ..ui.ui import {{ class_name }}UI
+from ..feature_setting import {{ class_name }}States
+from .state_manager import {{ class_name }}StateManager
 
 {% if use_loguru %}
 from loguru import logger as log
@@ -6,10 +10,6 @@ from loguru import logger as log
 import logging
 log = logging.getLogger(__name__)
 {% endif %}
-
-from codex_bot.base import BaseBotOrchestrator, UnifiedViewDTO, ViewResultDTO
-from ..ui.ui import {{ class_name }}UI
-from ..feature_setting import {{ class_name }}States
 
 if TYPE_CHECKING:
     from codex_bot.director import Director
@@ -23,6 +23,29 @@ class {{ class_name }}Orchestrator(BaseBotOrchestrator[Any]):
         super().__init__(expected_state={{ class_name }}States.main)
         self.ui = {{ class_name }}UI()
 
+    async def render_content(
+        self,
+        director: "Director" | None = None,
+        payload: Any = None
+    ) -> Union[ViewResultDTO, UnifiedViewDTO]:
+        """
+        Main logic for rendering feature content.
+
+        Example with Data Fetching & Smart Resolver:
+        ```python
+        # 1. Fetch data (Returns Envelope: meta + payload)
+        raw_data = await director.container.api.get_data(director.user_id)
+
+        # 2. Handle backend-driven navigation
+        data = await director.resolve(raw_data)
+        if isinstance(data, UnifiedViewDTO):
+            return data # Redirected to another scene
+        ```
+        """
+        log.debug(f"{{ class_name }} | Rendering Content | user_id={director.user_id}")
+
+        return self.ui.render_main(payload)
+
     async def handle_entry(
         self,
         director: "Director",
@@ -30,8 +53,5 @@ class {{ class_name }}Orchestrator(BaseBotOrchestrator[Any]):
     ) -> UnifiedViewDTO:
         """Entry point into the feature. Called by Director on set_scene()."""
         log.debug(f"{{ class_name }} | Action: Entry | user_id={director.user_id}")
-        return await self.render(payload, director)
 
-    async def render_content(self, payload: Any, director: "Director") -> ViewResultDTO:
-        """Content rendering logic. Override to implement feature UI."""
-        return self.ui.render_main(payload)
+        return await self.render(director=director, payload=payload)

@@ -16,13 +16,13 @@ class BotMenuOrchestrator(BaseBotOrchestrator):
         self.settings = settings
         self.ui = BotMenuUI()
 
-    async def handle_entry(self, director: Director, payload: Any = None) -> UnifiedViewDTO:
-        """Entry point for the menu."""
-        mode = payload if isinstance(payload, str) else "bot_menu"
-        return await self.render_dashboard(director, mode=mode)
-
-    async def render_dashboard(self, director: Director, mode: str = "bot_menu") -> UnifiedViewDTO:
+    async def render_content(
+        self,
+        director: Director | None = None,
+        payload: Any = None
+    ) -> UnifiedViewDTO:
         """Renders the dashboard view."""
+        mode = payload if isinstance(payload, str) else "bot_menu"
         # Logic for fetching available features from discovery
         available_features = self.discovery.get_menu_buttons(is_admin=(mode == "admin"))
 
@@ -30,9 +30,13 @@ class BotMenuOrchestrator(BaseBotOrchestrator):
 
         return UnifiedViewDTO(
             menu=menu_view,
-            chat_id=director.chat_id,
-            session_key=director.user_id
+            chat_id=director.chat_id if director else None,
+            session_key=director.user_id if director else None
         )
+
+    async def handle_entry(self, director: Director, payload: Any = None) -> UnifiedViewDTO:
+        """Entry point for the menu."""
+        return await self.render(director=director, payload=payload)
 
     async def handle_callback(self, director: Director, ctx: Any) -> UnifiedViewDTO | None:
         """Handles menu navigation clicks."""

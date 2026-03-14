@@ -1,6 +1,9 @@
 """
-Logic for generating a new project skeleton.
-Part of the codex-bot CLI.
+Project Initialization Command — Generates standardized project skeletons.
+
+Handles the creation of the root directory structure, infrastructure
+configuration, and core application files for new bot projects. Supports
+'Smart Merge' mode for existing repositories.
 """
 
 from __future__ import annotations
@@ -90,11 +93,14 @@ def start_project_command(args: Namespace) -> None:
     project_root = Path.cwd()
     package_dir = project_root / "src" / name
 
-    # 1. Safety Check
-    critical_files = ["pyproject.toml", "src"]
-    if any((project_root / f).exists() for f in critical_files) and not args.force:
-        print(f"❌ Error: Directory '{project_root}' already contains a project.")
-        return
+    # 1. Smart Safety Check
+    existing_pyproject = (project_root / "pyproject.toml").exists()
+    is_merge_mode = False
+
+    if existing_pyproject and not args.force:
+        print("⚠️  Existing project detected! Entering Smart Merge mode...")
+        print("Root configuration files will be created with '.bot' suffix.\n")
+        is_merge_mode = True
 
     # 2. Get Configuration
     is_interactive = args.mode is None
@@ -129,11 +135,13 @@ def start_project_command(args: Namespace) -> None:
     }
 
     # 3. Component Exclusion Rules
+    # Cleaned up from ghost files (app_telegram.py, main.py in root)
     skip_rules = [
         "src/infrastructure/database",
         "root/alembic.ini",
         "root/.env.example",
-        "src/app_telegram.py",  # DEPRECATED: now using manage.py + launcher.py
+        "root/main.py.j2",
+        "src/features/telegram/bot_menu/orchestrator.py",
     ]
 
     if getattr(args, "no_menu", False):
@@ -164,10 +172,22 @@ def start_project_command(args: Namespace) -> None:
                 if any(logical_path.startswith(rule) for rule in skip_rules):
                     continue
 
-                dest_path = project_root / rel_path if part == "root" else package_dir / rel_path
+                # Determine destination path
+                if part == "root":
+                    if is_merge_mode:
+                        ext = ".toml" if rel_path.suffix == ".toml" else ""
+                        stem = rel_path.stem if not ext else rel_path.name.replace(".toml", "")
+                        dest_path = project_root / f"{stem}.bot{rel_path.suffix}"
+                        if src_file.suffix == ".j2":
+                            dest_path = project_root / f"{stem}.bot"
+                    else:
+                        dest_path = project_root / rel_path
+                else:
+                    dest_path = package_dir / rel_path
 
+                # Render or copy
                 if src_file.suffix == ".j2":
-                    final_dest = dest_path.with_suffix("")
+                    final_dest = dest_path.with_suffix("") if not is_merge_mode or part == "src" else dest_path
                     renderer.render_to_file(logical_path, final_dest, context)
                 else:
                     dest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -189,13 +209,14 @@ def start_project_command(args: Namespace) -> None:
     print(f"\n✨ Bot Project '{name}' successfully initialized!")
     print(f"📂 Location: {project_root}")
 
-    print("\n🛠  Management Commands:")
-    print("  python manage.py run             - Start the bot")
-    if config["mode"] == "direct":
-        print("  python manage.py makemigrations  - Create DB migration")
-        print("  python manage.py migrate         - Apply migrations")
+    if is_merge_mode:
+        print("\n🛠  SMART MERGE ACTION REQUIRED:")
+        print("  1. Copy dependencies from 'pyproject.bot' to your 'pyproject.toml'")
+        print("  2. Review 'manage.bot' for bot-specific commands")
+        print("  3. Run 'pip install -e .'")
+    else:
+        print("\n🛠  Management Commands:")
+        print("  python manage.py run             - Start the bot (Dev)")
+        print(f"  python -m {name}.launcher        - Start the bot (Production)")
 
-    print("\n🚀 Quick Start:")
-    print("  1. pip install -e .")
-    print("  2. python manage.py run")
     print("\nHappy coding! 🥂")
