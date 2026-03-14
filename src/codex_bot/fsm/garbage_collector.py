@@ -1,141 +1,122 @@
 """
-GarbageStateRegistry and IsGarbageStateFilter — Automatic deletion
-of text messages in states where only button clicks are expected.
+Garbage Collector — Automatic cleaning of UI messages.
 
-The registry is filled dynamically when features are loaded via
-FeatureDiscoveryService or directly via GarbageStateRegistry.register().
-This allows any feature to declare its states as "garbage" without
-touching the global configuration.
-
-Example:
-    ```python
-    # In feature_setting.py of a feature:
-    from aiogram.fsm.state import State, StatesGroup
-
-    class BookingStates(StatesGroup):
-        select_date = State()
-        select_time = State()
-
-    # Register the entire group as garbage:
-    GarbageStateRegistry.register(BookingStates)
-
-    # Or a single state:
-    GarbageStateRegistry.register(BookingStates.select_date)
-    ```
+Tracks FSM states and deletes old UI elements (keyboards/messages)
+when a user transitions between scenes or completes a flow.
 """
 
-from typing import Any
+from __future__ import annotations
+
+import logging
+from collections.abc import Iterable
+from typing import TYPE_CHECKING, Any
 
 from aiogram.filters import Filter
-from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import Message
+from aiogram.types import TelegramObject
+
+if TYPE_CHECKING:
+    from aiogram.fsm.context import FSMContext
+
+log = logging.getLogger(__name__)
+
+# Type alias for objects that can be registered in the GC
+RegisterableState = str | State | type[StatesGroup] | Iterable["RegisterableState"]
 
 
 class GarbageStateRegistry:
-    """
-    Registry of FSM states where text messages are considered garbage.
+    """Registry of FSM states for which the Garbage Collector is active.
 
-    Global registry: states are registered once at startup,
-    the filter checks the user's current state with each message.
-
-    Supports registration of:
-    - a single `State` object
-    - an entire `StatesGroup` (all states in the group)
-    - a string (state name)
-    - a list / tuple / set of the above types
+    When a user transitions to a state registered here, the system can automatically
+    delete messages tracked in the ``_garbage_messages`` FSM data key.
 
     Example:
         ```python
-        GarbageStateRegistry.register(MyFeatureStates)          # entire group
-        GarbageStateRegistry.register(MyFeatureStates.waiting)  # single state
-        GarbageStateRegistry.register(["Feature1:main", "Feature2:step1"])
+        GarbageStateRegistry.register(MyStates.input_form)
+        GarbageStateRegistry.register([MyStates.step1, MyStates.step2])
         ```
     """
 
     _states: set[str] = set()
 
     @classmethod
-    def register(
-        cls,
-        state: State | StatesGroup | type[StatesGroup] | str | list[Any] | tuple[Any, ...] | set[Any],
-    ) -> None:
-        """
-        Registers state(s) as garbage.
+    def register(cls, state_or_group: RegisterableState) -> None:
+        """Adds a state or a group of states to the registry for automatic cleaning.
 
         Args:
-            state: State, StatesGroup, string, or an iterable of them.
+            state_or_group: String state, State object, StatesGroup class, or a collection of these.
         """
-        if isinstance(state, list | tuple | set):
-            for s in state:
-                cls.register(s)
-            return
-
-        # StatesGroup class (not instance) — take all its states
-        if isinstance(state, type) and issubclass(state, StatesGroup):
-            for s in state.__all_states__:
-                cls.register(s)
-            return
-
-        # StatesGroup instance — take __all_states__ (Aiogram 3)
-        if hasattr(state, "__all_states__"):
-            for s in state.__all_states__:
-                cls.register(s)
-            return
-
-        # State object or string
-        state_name = state.state if isinstance(state, State) else str(state)
-        if state_name:
-            cls._states.add(state_name)
+        if isinstance(state_or_group, str):
+            cls._states.add(state_or_group)
+        elif isinstance(state_or_group, State):
+            if state_or_group.state:
+                cls._states.add(state_or_group.state)
+        elif isinstance(state_or_group, type) and issubclass(state_or_group, StatesGroup):
+            # In AIogram 3.x, we iterate over class attributes to find States
+            for attr_name in dir(state_or_group):
+                attr = getattr(state_or_group, attr_name)
+                if isinstance(attr, State) and attr.state:
+                    cls._states.add(attr.state)
+        elif isinstance(state_or_group, list | tuple | set):
+            for item in state_or_group:
+                cls.register(item)
 
     @classmethod
-    def is_garbage(cls, state_name: str | None) -> bool:
-        """
-        Checks if a state is registered as garbage.
+    def is_garbage(cls, state: str | None) -> bool:
+        """Checks if a state is in the registry.
 
         Args:
-            state_name: String name of the current FSM state.
+            state: Full state name string (e.g. "MyStates:step1").
 
         Returns:
-            True if the state is registered as garbage.
+            ``True`` if the state is registered for GC.
         """
-        if state_name is None:
-            return False
-        return state_name in cls._states
+        return state in cls._states
 
     @classmethod
     def registered_states(cls) -> frozenset[str]:
-        """
-        Returns all registered garbage states (read-only).
-
-        Returns:
-            Frozenset of string state names.
-        """
+        """Returns a read-only view of registered states."""
         return frozenset(cls._states)
 
 
 class IsGarbageStateFilter(Filter):
-    """
-    Aiogram filter: True if the user's current FSM state is garbage.
+    """Aiogram filter to check if the current user state is registered for GC.
 
-    Used in common_fsm_router for automatic deletion of unwanted text messages.
-
-    Example:
-        ```python
-        @router.message(F.text, IsGarbageStateFilter())
-        async def delete_garbage(message: Message, state: FSMContext):
-            await message.delete()
-        ```
+    Used by the internal garbage collection middleware/handlers to decide
+    when to trigger the cleaning process.
     """
 
-    async def __call__(self, message: Message, state: FSMContext) -> bool:
-        """
-        Args:
-            message: Incoming message.
-            state: User's FSM context.
+    async def __call__(self, event: TelegramObject, state: FSMContext) -> bool:
+        """Checks the current state against the registry.
 
         Returns:
-            True if the current state is registered as garbage.
+            ``True`` if current state is in GarbageStateRegistry.
         """
         current_state = await state.get_state()
         return GarbageStateRegistry.is_garbage(current_state)
+
+
+async def collect_garbage(state: FSMContext, chat_id: int | str, bot: Any) -> None:
+    """Performs cleaning of old messages for the current FSM context.
+
+    Iterates through message IDs stored in the ``_garbage_messages`` key of the
+    user's FSM data, attempts to delete them from Telegram, and then clears the list.
+
+    Args:
+        state: FSM context of the user.
+        chat_id: Telegram chat ID.
+        bot: Aiogram Bot instance for calling delete_message.
+    """
+    data = await state.get_data()
+    msg_ids = data.get("_garbage_messages", [])
+
+    if not msg_ids:
+        return
+
+    for msg_id in msg_ids:
+        try:
+            await bot.delete_message(chat_id=chat_id, message_id=msg_id)
+        except Exception as e:
+            log.debug(f"GC | Failed to delete message {msg_id}: {e}")
+
+    await state.update_data(_garbage_messages=[])

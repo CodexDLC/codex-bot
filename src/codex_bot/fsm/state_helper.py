@@ -1,8 +1,9 @@
 """
-StateHelper — Universal utilities for safe FSMContext data manipulation.
+StateHelper — Atomic abstraction layer for FSM data manipulation.
 
-Provides atomic-like operations for getting, updating, and removing keys
-from aiogram FSM storage, preventing "zombie dictionaries" in Redis.
+Provides safe, consistent access to FSM storage for both high-level managers
+and low-level infrastructure. Implements aggressive cleanup of empty
+structures to optimize backend performance (anti-zombie pattern).
 """
 
 from typing import Any
@@ -11,11 +12,11 @@ from aiogram.fsm.context import FSMContext
 
 
 class StateHelper:
-    """
-    Helper for safe operations with FSMContext data.
+    """Low-level utility class for consistent FSM interaction.
 
-    Encapsulates the logic of reading and writing to FSM storage
-    to ensure consistency across different modules (StateManager, I18n, etc.).
+    Encapsulates the complexity of reading, writing, and purifying state
+    dictionaries. Ensures that all framework components follow the same
+    atomicity and cleanup rules when interacting with `FSMContext`.
     """
 
     @staticmethod

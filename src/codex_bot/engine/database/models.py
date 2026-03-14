@@ -1,8 +1,9 @@
 """
-Base model for Telegram Bot infrastructure (Direct mode).
+Declarative Foundation — Core SQLAlchemy schema definitions.
 
-Naming convention ensures consistent constraint names in Alembic migrations.
-Includes mixins for common fields (ID, Timestamps).
+Establishes the base classes and naming conventions for the framework's
+object-relational mapping. Ensures deterministic constraint names across
+different database dialects for reliable Alembic migration generation.
 """
 
 from datetime import datetime

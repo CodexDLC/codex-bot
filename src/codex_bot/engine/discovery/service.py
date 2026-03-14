@@ -21,12 +21,12 @@ log = logging.getLogger(__name__)
 
 
 class FeatureDiscoveryService:
-    """
-    Service for discovering and registering feature configurations.
+    """Automated orchestration for framework-wide feature registration.
 
-    Operates on a 'convention over configuration' principle:
-    - Looks for `feature_setting.py` in predefined paths.
-    - Automatically registers routers, menu configs, and garbage states.
+    Operates on a 'convention over configuration' principle to dynamically
+    locate and initialize business features. Manages the discovery of
+    Aiogram routers, Redis stream handlers, UI menu configurations, and
+    FSM garbage collection states.
     """
 
     def __init__(

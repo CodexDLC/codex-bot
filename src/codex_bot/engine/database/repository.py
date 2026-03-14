@@ -1,20 +1,28 @@
 """
-Base Repository implementation for codex-bot.
-Provides a standardized interface for data access in Direct mode.
-Transactions are managed externally by DatabaseTransactionMiddleware.
+Generic Repository Abstraction — Standardized Data Access Pattern.
+
+Implements the Repository pattern to decouple business logic from persistence
+concerns. Optimized for 'Direct' database mode, utilizing centralized transaction
+management via middleware.
 """
 
 from collections.abc import Sequence
-from typing import Any, Generic, TypeVar, cast
+from typing import Any, Generic, Protocol, TypeVar, cast, runtime_checkable
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from .models import Base
+
+@runtime_checkable
+class Identifiable(Protocol):
+    """Protocol for models that have an 'id' attribute."""
+
+    id: Any
+
 
 # Type variable for the SQLAlchemy model
-ModelType = TypeVar("ModelType", bound=Base)
+ModelType = TypeVar("ModelType", bound=Identifiable)
 
 
 class BaseRepository(Generic[ModelType]):
@@ -38,7 +46,8 @@ class BaseRepository(Generic[ModelType]):
 
     async def get(self, pk: Any) -> ModelType | None:
         """Fetch a single record by primary key."""
-        return await self.session.get(self.model, pk)
+        result = await self.session.get(self.model, pk)
+        return result
 
     async def get_multi(self, skip: int = 0, limit: int = 100) -> Sequence[ModelType]:
         """Fetch multiple records with pagination."""
@@ -55,16 +64,14 @@ class BaseRepository(Generic[ModelType]):
 
     async def update(self, pk: Any, **kwargs: Any) -> ModelType | None:
         """Update an existing record by primary key."""
-        # Note: attr-defined ignore is needed for Generic model id access
-        id_column = self.model.id  # type: ignore[attr-defined]
+        id_column = self.model.id
         query = update(self.model).where(id_column == pk).values(**kwargs).returning(self.model)
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
 
     async def remove(self, pk: Any) -> bool:
         """Delete a record by primary key."""
-        # Note: attr-defined ignore is needed for Generic model id access
-        id_column = self.model.id  # type: ignore[attr-defined]
+        id_column = self.model.id
         query = delete(self.model).where(id_column == pk)
         result = await self.session.execute(query)
         # Cast result to CursorResult[Any] to satisfy Mypy for rowcount

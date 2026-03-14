@@ -1,9 +1,13 @@
 """
-Database engine factory for codex-bot.
-Optimized for async bot workflows (SQLite/PostgreSQL).
+Async Database Factory — Optimized SQLAlchemy engine orchestration.
+
+Provides a centralized mechanism for creating and configuring asynchronous
+SQLAlchemy engines and session factories. Implements backend-specific
+optimizations for SQLite (WAL mode, foreign keys) and PostgreSQL (pool
+management).
 """
 
-from typing import Any
+from typing import Any, TypeVar
 
 from sqlalchemy import Engine, event
 from sqlalchemy.ext.asyncio import (
@@ -14,17 +18,23 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import NullPool, QueuePool
 
+ModelType = TypeVar("ModelType")
 
-@event.listens_for(Engine, "connect")
+
 def set_sqlite_pragma(dbapi_connection: Any, connection_record: Any) -> None:
-    """
-    Setup SQLite for high-performance async workflows.
-    Activates WAL mode and foreign keys.
+    """Configures SQLite connections for high-performance concurrent access.
 
-    Checks for both 'sqlite3' (sync) and 'aiosqlite' (async) modules.
+    This listener activates Write-Ahead Logging (WAL) and enforces foreign key
+    constraints, significantly improving reliability and performance in
+    asynchronous multi-user bot scenarios.
+
+    Args:
+        dbapi_connection: The raw PEP 249 connection object.
+        connection_record: The internal SQLAlchemy connection record.
     """
     module_name = type(dbapi_connection).__module__
     if module_name.startswith("sqlite3") or module_name.startswith("aiosqlite"):
+        # We use Any because DBAPI cursor can vary between divers
         cursor = dbapi_connection.cursor()
 
         # Performance & Consistency Pragmas
@@ -36,13 +46,20 @@ def set_sqlite_pragma(dbapi_connection: Any, connection_record: Any) -> None:
 
 
 def build_engine(url: str, echo: bool = False, **kwargs: Any) -> AsyncEngine:
-    """
-    Creates a production-ready async SQLAlchemy engine.
+    """Assembles a production-ready asynchronous database engine.
 
-    Features:
-    - Auto-detection of SQLite vs Postgres settings.
-    - Pre-ping to avoid dead connections.
-    - Automatic PRAGMA setup for SQLite via event listeners.
+    Automatically detects the target dialect and applies specialized
+    configuration:
+    - SQLite: Uses `NullPool` to prevent lock contention in async environments.
+    - PostgreSQL: Uses `QueuePool` with optimized size and overflow settings.
+
+    Args:
+        url: The database connection string (RFC-3986).
+        echo: Whether to enable standard out logging for SQL statements.
+        **kwargs: Additional engine arguments to pass to `create_async_engine`.
+
+    Returns:
+        The configured AsyncEngine instance.
     """
     is_sqlite = url.startswith("sqlite")
 
@@ -77,3 +94,7 @@ def build_session_maker(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]
         expire_on_commit=False,
         autoflush=False,
     )
+
+
+# Register listeners
+event.listen(Engine, "connect", set_sqlite_pragma)

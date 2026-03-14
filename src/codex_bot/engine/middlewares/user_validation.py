@@ -1,41 +1,38 @@
 """
-UserValidationMiddleware — Unified user and permission management.
+RBAC Orchestrator — Unified user validation and security context.
 
-Retrieves user from events and performs authorization via the BotContainer.
+Extracts user identity from polymorphic Telegram events and facilitates
+Role-Based Access Control (RBAC) by injecting authorization metadata
+into the request context. Prepares user-scoped data for business logic.
 """
+
+from __future__ import annotations
 
 import logging
 from collections.abc import Awaitable, Callable
-from typing import Any, Protocol
+from typing import Any
 
 from aiogram import BaseMiddleware
-from aiogram.types import CallbackQuery, Message, TelegramObject
+from aiogram.types import TelegramObject, User
+
+from ..protocols import ContainerProtocol
 
 log = logging.getLogger(__name__)
 
 
-class ContainerProtocol(Protocol):
-    """Protocol to ensure the container has required RBAC methods."""
-
-    def is_admin(self, user_id: int) -> bool: ...
-
-
 class UserValidationMiddleware(BaseMiddleware):
+    """Middleware for validating users and injecting RBAC data.
+
+    Key features:
+    - **Universal**: Supports all update types via 'event_from_user'.
+    - **RBAC**: Injects ``is_admin`` flag using ContainerProtocol.
+    - **Safe**: Handles events without an associated user.
+
+    Args:
+        container: Object implementing ContainerProtocol for admin checks.
     """
-    Middleware for user validation and centralized RBAC.
 
-    Injects into 'data':
-    - `user`: aiogram.types.User
-    - `is_admin`: bool (delegated to container.is_admin)
-    """
-
-    def __init__(self, container: ContainerProtocol):
-        """
-        Initializes the middleware with a DI container.
-
-        Args:
-            container: The BotContainer instance.
-        """
+    def __init__(self, container: ContainerProtocol) -> None:
         self.container = container
 
     async def __call__(
@@ -44,17 +41,16 @@ class UserValidationMiddleware(BaseMiddleware):
         event: TelegramObject,
         data: dict[str, Any],
     ) -> Any:
-        if isinstance(event, Message | CallbackQuery):
-            user = event.from_user
-            if not user:
-                log.debug(f"UserValidation | No user in event {type(event).__name__}")
-                return None
+        """Processes the incoming event."""
+        # aiogram 3.x automatically extracts the user into 'event_from_user'
+        user: User | None = data.get("event_from_user")
 
-            user_id = user.id
+        if user:
             data["user"] = user
-
-            # Delegate RBAC check to the container
-            # This allows for dynamic roles (DB, Cache, etc.) without changing middleware
-            data["is_admin"] = self.container.is_admin(user_id)
+            data["is_admin"] = self.container.is_admin(user.id)
+            log.debug(f"UserValidation | user_id={user.id} is_admin={data['is_admin']}")
+        else:
+            data["is_admin"] = False
+            log.debug("UserValidation | No user found in event")
 
         return await handler(event, data)

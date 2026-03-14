@@ -1,8 +1,9 @@
 """
-FSMContextI18nManager — Locale manager via FSM storage.
+Localized Storage Manager — Redis-backed I18N orchestration.
 
-Integrates with aiogram-i18n. Stores the user's selected language
-in FSM (Redis) instead of a database, requiring no additional queries.
+Integrates framework-wide internationalization with FSM storage. Manages user
+locale preferences using Redis, allowing for efficient, database-agnostic
+language resolution without additional I/O overhead.
 """
 
 from typing import Any

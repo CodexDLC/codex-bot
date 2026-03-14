@@ -1,9 +1,9 @@
 """
-DatabaseTransactionMiddleware — Automatic session management for SQLAlchemy.
+Transaction Management — Optimized SQLAlchemy session orchestration.
 
-Provides a 'Session-per-Event' pattern. Each incoming Telegram update starts
-a new transaction. If the handler succeeds, changes are committed automatically.
-If an exception occurs, changes are rolled back.
+Implements the 'Session-per-Event' pattern for asynchronous database
+interactions. Manages the lifecycle of SQLAlchemy sessions, providing
+automatic commit on success and deterministic rollback on failure.
 """
 
 import logging
