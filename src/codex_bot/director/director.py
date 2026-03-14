@@ -1,9 +1,10 @@
 """
-Director — Coordinator of cross-feature transitions.
+Director — Request-scoped coordinator for cross-feature navigation.
 
-The Director knows how to transition from one feature to another: change the FSM state,
-get the required orchestrator from the container, and call its handle_entry().
-Orchestrators are stateless — the Director passes itself as context with each call.
+The Director oversees transitions between independent feature modules by managing
+FSM state changes and orchestrator resolution. It acts as a bridge between the
+DI container and the business logic of individual features, ensuring that
+orchestrators remain stateless and decoupled from session management.
 """
 
 from __future__ import annotations
@@ -22,16 +23,14 @@ log = logging.getLogger(__name__)
 class Director:
     """Coordinator of transitions between features (scenes).
 
-    Instantiated in the handler for each incoming request.
-    Stores the request context (user_id, chat_id, state) and passes itself
-    to orchestrators as an argument — no mutable state in the orchestrator.
+    The Director is instantiated per incoming request (request-scoped) to capture
+    ephemeral context such as user ID, chat ID, and the current FSM state. It facilitates
+    the "Stateful Navigation, Stateless Logic" pattern by providing this context
+    to singletons of `OrchestratorProtocol`.
 
-    Args:
-        container: Project's DI container with a ``features`` attribute.
-        state: FSM context of the current user.
-        user_id: Telegram ID of the user.
-        chat_id: Target chat ID.
-        trigger_id: ID of the trigger message (e.g., /start) for subsequent deletion.
+    Attributes:
+        REDIRECT_KEY: Primary metadata key for-driven navigation.
+        LEGACY_REDIRECT_KEY: Deprecated navigation key for backward compatibility.
 
     Example:
         ```python
@@ -41,10 +40,13 @@ class Director:
             user_id=callback.from_user.id,
             chat_id=callback.message.chat.id,
         )
-        view = await director.set_scene(feature="booking", payload=None)
-        await sender.send(view)
+        view = await director.set_scene(feature="booking", payload={"id": 1})
         ```
     """
+
+    # System keys for metadata-driven navigation
+    REDIRECT_KEY = "__next_scene__"
+    LEGACY_REDIRECT_KEY = "next_scene"
 
     def __init__(
         self,
@@ -60,21 +62,69 @@ class Director:
         self.chat_id = chat_id
         self.trigger_id = trigger_id
 
-    async def set_scene(self, feature: str, payload: Any = None) -> Any:
-        """Cross-feature transition: changes FSM state and calls the feature orchestrator.
+    async def resolve(self, data: Any) -> UnifiedViewDTO | Any:
+        """Analyze incoming data for navigation instructions and resolve redirects.
 
-        Algorithm:
-        1. Retrieves the orchestrator by key from ``container.features``.
-        2. Sets the FSM state if the orchestrator has declared it.
-        3. Passes itself to ``handle_entry(director=self, payload=payload)``.
-        4. Enriches the result with ``chat_id`` and ``session_key`` as a fallback.
+        Performs a deep inspection of the provided data envelope to detect
+        navigation metadata. If a redirect key is present, it automatically
+        invokes `set_scene`.
 
         Args:
-            feature: Orchestrator key in ``container.features`` (e.g., ``"booking"``).
-            payload: Data to pass to ``handle_entry()``.
+            data: Incoming request payload or response from a downstream service.
+                Expected to be a dictionary containing 'meta' or 'payload' keys,
+                or a flat dictionary structure.
 
         Returns:
-            UnifiedViewDTO or any orchestrator result. None if the feature is not found.
+            A `UnifiedViewDTO` if a redirect was successfully resolved,
+            otherwise returns the original business payload (unwrapped).
+
+        Raises:
+            RuntimeError: If the resolved orchestrator fails to process the payload.
+        """
+        if not isinstance(data, dict):
+            return data
+
+        # 1. Detect Navigation (Metadata or Key)
+        meta = data.get("meta", {}) if "meta" in data else data
+        next_feature = meta.get(self.REDIRECT_KEY) or meta.get(self.LEGACY_REDIRECT_KEY)
+
+        # 2. Extract Business Payload
+        payload = data.get("payload") if "payload" in data else data
+
+        # 3. Handle redirect if instructed by backend/data
+        if next_feature:
+            log.info(f"Director | Smart Resolve: Redirecting to '{next_feature}'")
+
+            # Clean up all possible navigation keys from payload copy if it's a flat dict
+            if isinstance(payload, dict):
+                has_nav_keys = self.REDIRECT_KEY in payload or self.LEGACY_REDIRECT_KEY in payload
+                if has_nav_keys:
+                    payload = payload.copy()
+                    payload.pop(self.REDIRECT_KEY, None)
+                    payload.pop(self.LEGACY_REDIRECT_KEY, None)
+
+            return await self.set_scene(feature=next_feature, payload=payload)
+
+        return payload
+
+    async def set_scene(self, feature: str, payload: Any = None) -> UnifiedViewDTO | Any:
+        """Execute a cross-feature transition and invoke the target orchestrator.
+
+        Performs atomic state synchronization and logic hand-off. The method
+        retrieves the requested orchestrator from the DI container, updates
+        the user's FSM state (if required), and executes the entry logic.
+
+        Args:
+            feature: Unique identifier of the target feature in the DI container.
+            payload: Ephemeral data to pass to the feature's entry point.
+
+        Returns:
+            An instance of `UnifiedViewDTO` enriched with session metadata for
+            immediate rendering.
+
+        Side Effects:
+            - Updates the FSM state via `self.state.set_state()`.
+            - Logs navigation events for auditability.
         """
         orchestrator = self.container.features.get(feature)
 
@@ -82,17 +132,19 @@ class Director:
             log.error(f"Director | unknown_feature='{feature}' user_id={self.user_id}")
             return None
 
-        # 1. FSM state change
-        if self.state and hasattr(orchestrator, "expected_state") and orchestrator.expected_state:
-            await self.state.set_state(orchestrator.expected_state)
+        # 1. Idempotent FSM state change
+        expected_state = getattr(orchestrator, "expected_state", None)
+        if self.state and expected_state:
+            current_state = await self.state.get_state()
+            if current_state != expected_state:
+                await self.state.set_state(expected_state)
+                log.debug(f"Director | State changed: {current_state} -> {expected_state}")
 
-        # 2. Call handle_entry (pass self as context) or render
+        # 2. Call orchestrator (Strict Protocol Check with Keyword Arguments)
         if isinstance(orchestrator, OrchestratorProtocol):
             view = await orchestrator.handle_entry(director=self, payload=payload)
-        elif hasattr(orchestrator, "render"):
-            view = await orchestrator.render(payload, self)
         else:
-            log.warning(f"Director | orchestrator='{feature}' has no handle_entry or render")
+            log.warning(f"Director | '{feature}' does not implement OrchestratorProtocol")
             return None
 
         # 3. Fallback enrichment of UnifiedViewDTO with session data
@@ -101,6 +153,7 @@ class Director:
                 update={
                     "chat_id": view.chat_id or self.chat_id,
                     "session_key": view.session_key or self.user_id,
+                    "trigger_message_id": view.trigger_message_id or self.trigger_id,
                 }
             )
 

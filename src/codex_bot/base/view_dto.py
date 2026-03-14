@@ -1,9 +1,9 @@
 """
-View DTOs — Immutable response objects from the Orchestrator.
+View DTOs — Immutable response objects for the presentation layer.
 
-All DTOs are frozen (frozen=True) for safe transfer
-between asynchronous services without the risk of race conditions.
-If you need to change a field — use model_copy(update={...}).
+This module defines Data Transfer Objects (DTOs) used by orchestrators to
+encapsulate UI state. All DTOs are immutable (frozen) to ensure thread-safety
+and prevent unintended side effects during transfer between asynchronous services.
 """
 
 from typing import Literal
@@ -13,15 +13,18 @@ from pydantic import BaseModel, ConfigDict
 
 
 class ViewResultDTO(BaseModel):
-    """DTO for representing a single message (text + keyboard).
+    """Data Transfer Object representing a single Telegram message.
+
+    Encapsulates the visual components of a message, including its textual
+    content and interactive elements. Designed for use within `UnifiedViewDTO`.
 
     Attributes:
-        text: HTML-text of the message.
-        kb: Inline keyboard. None — without a keyboard.
+        text: HTML-formatted string containing the message body.
+        kb: Optional inline keyboard markup for user interaction.
 
     Example:
         ```python
-        view = ViewResultDTO(text="Hello!", kb=my_keyboard)
+        view = ViewResultDTO(text="<b>Success!</b>", kb=inline_kb)
         ```
     """
 
@@ -51,30 +54,29 @@ class MessageCoordsDTO(BaseModel):
 
 
 class UnifiedViewDTO(BaseModel):
-    """Unified immutable response DTO from the Orchestrator.
+    """Unified response DTO for cross-service UI synchronization.
 
-    Contains optional Menu and Content blocks, as well as metadata
-    for routing and UI management (deletion, history clearing).
+    This DTO serves as the primary contract between orchestrators and the
+    `ViewSender`. It aggregates multiple UI components (menus, content)
+    and routing metadata required for complex interaction flows.
 
     Attributes:
-        content: Main content block (text + buttons).
-        menu: Navigation menu block. None — menu is not updated.
-        clean_history: If True — ViewSender will delete previous UI messages.
-        alert_text: Text for a popup alert (for CallbackQuery).
-        trigger_message_id: ID of the trigger message (e.g., /start) for deletion.
-        chat_id: Target chat ID. Filled by the Director.
-        session_key: Session key (user_id or channel session). Filled by the Director.
-        mode: Sending mode — strictly ``"channel"``, ``"topic"``, or ``"user"``.
-        message_thread_id: Topic ID in a supergroup.
+        content: Primary content block representing the main response message.
+        menu: Optional navigation menu block for persistent UI elements.
+        clean_history: If True, instructs the sender to prune previous UI messages.
+        alert_text: Plain text for CallbackQuery toast notifications.
+        trigger_message_id: ID of the message that initiated the request (for cleanup).
+        chat_id: Target destination for the UI update. Populated by the `Director`.
+        session_key: Identifier for user or channel session isolation.
+        mode: Telegram delivery mode (channel/topic/user).
+        message_thread_id: Destination thread ID for supergroup topics.
 
     Example:
         ```python
         view = UnifiedViewDTO(
-            content=ViewResultDTO(text="Content"),
-            menu=ViewResultDTO(text="Menu"),
+            content=ViewResultDTO(text="Operation completed."),
+            clean_history=True
         )
-        # To change chat_id after creation — use model_copy:
-        view = view.model_copy(update={"chat_id": 123456})
         ```
     """
 

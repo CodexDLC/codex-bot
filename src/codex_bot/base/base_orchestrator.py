@@ -1,12 +1,10 @@
 """
-BaseBotOrchestrator — Abstract STATELESS feature orchestrator.
+BaseBotOrchestrator — Abstract base for stateless feature orchestrators.
 
-The Orchestrator is the heart of each feature. It knows how to transform
-an incoming payload into a UnifiedViewDTO for sending to the user.
-
-IMPORTANT: The class must be Stateless — it does not store user state in self.
-Orchestrators are singletons shared between all concurrent requests.
-All context is passed through method arguments (director, payload).
+Orchestrators serve as the core logic controllers for specific features. They
+transform business payloads into visual DTOs. Following the Stateless Singleton
+pattern, a single instance handles concurrent requests by receiving all
+necessary context via method arguments.
 """
 
 from __future__ import annotations
@@ -24,36 +22,25 @@ PayloadT = TypeVar("PayloadT")
 
 
 class BaseBotOrchestrator(ABC, Generic[PayloadT]):  # noqa: UP046
-    """Abstract STATELESS feature orchestrator.
+    """Abstract base class for feature-specific orchestrators.
 
-    Defines the contract for all orchestrators in the system.
-    The Director uses this interface for cross-feature transitions.
+    Implements the `OrchestratorProtocol` and provides a template for
+    rendering UI responses. Orchestrators are designed as stateless services
+    that operate on a request-scoped `Director` context.
 
-    The class is a singleton — one instance handles requests from all users
-    concurrently. No mutable user state in ``self``.
-    All context (user_id, chat_id, FSM) is passed through the ``director``.
-
-    Subclasses must implement:
-        - ``render_content(payload, director)`` — main rendering logic.
-
-    Subclasses may override:
-        - ``handle_entry(director, payload)`` — entry point into the feature.
+    Note:
+        Subclasses must be thread-safe for use in `asyncio` loops as they are
+        typically registered as singletons in the DI container.
 
     Args:
-        expected_state: FSM state string set when entering the feature.
-                        None — state does not change.
+        expected_state: The FSM state string to be set by the `Director`
+            when this feature is entered. If None, the state remains unchanged.
 
     Example:
         ```python
-        class BookingOrchestrator(BaseBotOrchestrator[BookingPayload]):
-            def __init__(self):
-                super().__init__(expected_state="BookingStates:main")
-
-            async def render_content(
-                self, payload: BookingPayload, director: Director
-            ) -> ViewResultDTO:
-                slots = await self.api.get_slots(director.user_id)
-                return ViewResultDTO(text=format_slots(slots), kb=build_kb(slots))
+        class ProfileOrchestrator(BaseBotOrchestrator[ProfilePayload]):
+            async def render_content(self, director, payload):
+                return ViewResultDTO(text=f"User: {payload.name}")
         ```
     """
 
@@ -63,19 +50,21 @@ class BaseBotOrchestrator(ABC, Generic[PayloadT]):  # noqa: UP046
     @abstractmethod
     async def render_content(
         self,
-        payload: PayloadT,
-        director: Director,
-    ) -> ViewResultDTO:
-        """Main logic for rendering feature content.
+        director: Director | None = None,
+        payload: PayloadT | None = None,
+    ) -> ViewResultDTO | UnifiedViewDTO:
+        """Analyze business data and generate the primary UI components.
 
-        Must be implemented in each specific orchestrator.
+        This is the primary extension point for feature logic. It must process
+         the payload and return the visual representation of the feature.
 
         Args:
-            payload: Data for rendering (DTO from backend, dict, etc.).
-            director: Context of the current request (user_id, chat_id, state).
+            director: Request-scoped coordinator providing access to DI and session.
+            payload: Domain-specific data required for rendering.
 
         Returns:
-            ViewResultDTO with text and keyboard.
+            A `ViewResultDTO` for standard responses or `UnifiedViewDTO` for
+            complex responses or redirects.
         """
         ...
 
@@ -86,38 +75,49 @@ class BaseBotOrchestrator(ABC, Generic[PayloadT]):  # noqa: UP046
     ) -> UnifiedViewDTO:
         """Entry point into the feature. Called by the Director during set_scene().
 
-        The default implementation simply calls render(payload, director).
+        The default implementation simply calls render(director, payload).
         Override for complex feature initialization logic.
 
         Args:
-            director: Context of the current request.
+            director: Context of the request.
             payload: Initial data for rendering.
 
         Returns:
             UnifiedViewDTO for sending to the user.
         """
-        return await self.render(payload, director)
+        return await self.render(director=director, payload=payload)
 
     async def render(
         self,
-        payload: PayloadT | None,
-        director: Director,
+        director: Director | None = None,
+        payload: PayloadT | None = None,
     ) -> UnifiedViewDTO:
-        """Assembles UnifiedViewDTO from render_content().
+        """Assemble a `UnifiedViewDTO` by executing the rendering logic.
 
-        Enriches the result with data from the director (chat_id, session_key).
+        Wraps the result of `render_content` into a standardized delivery
+        format. Handles automatic enrichment for standard response types.
 
         Args:
-            payload: Data for rendering.
-            director: Context of the current request.
+            director: Current request context.
+            payload: Data to be rendered.
 
         Returns:
-            UnifiedViewDTO ready to be sent via ViewSender.
+            A fully structured `UnifiedViewDTO` ready for transmission.
         """
-        content_view = await self.render_content(payload, director)  # type: ignore[arg-type]
-        return UnifiedViewDTO(content=content_view, menu=None).model_copy(
-            update={
-                "chat_id": director.chat_id,
-                "session_key": director.user_id,
-            }
-        )
+        # Internal library calls now strictly use keyword arguments for safety
+        view = await self.render_content(director=director, payload=payload)
+
+        # If render_content already returned a full UnifiedViewDTO (Redirect)
+        res = view if isinstance(view, UnifiedViewDTO) else UnifiedViewDTO(content=view, menu=None)
+
+        # Session enrichment (chat_id, session_key) from the Director context
+        if director:
+            res = res.model_copy(
+                update={
+                    "chat_id": res.chat_id or director.chat_id,
+                    "session_key": res.session_key or director.user_id,
+                    "trigger_message_id": res.trigger_message_id or director.trigger_id,
+                }
+            )
+
+        return res
