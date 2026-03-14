@@ -7,7 +7,7 @@ from codex_bot.base.view_dto import UnifiedViewDTO, ViewResultDTO
 
 
 class MockOrchestrator(BaseBotOrchestrator[str]):
-    async def render_content(self, payload: str, director: MagicMock) -> ViewResultDTO:
+    async def render_content(self, director: MagicMock, payload: str | None = None) -> ViewResultDTO:
         return ViewResultDTO(text=f"Rendered: {payload}")
 
 
@@ -16,6 +16,7 @@ def director():
     director = MagicMock()
     director.chat_id = 12345
     director.user_id = "user:12345"
+    director.trigger_id = None
     return director
 
 
@@ -24,7 +25,7 @@ async def test_orchestrator_render_enrichment(director):
     orchestrator = MockOrchestrator()
     payload = "test_payload"
 
-    unified_view = await orchestrator.render(payload, director)
+    unified_view = await orchestrator.render(director, payload)
 
     assert isinstance(unified_view, UnifiedViewDTO)
     assert unified_view.content.text == "Rendered: test_payload"

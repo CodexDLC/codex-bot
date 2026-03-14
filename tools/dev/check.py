@@ -70,7 +70,7 @@ def check_quality() -> bool:
 
 def check_types() -> bool:
     print_step("Checking Types (Mypy)")
-    success, out = run_command(f"mypy {SRC_DIR}", capture_output=True)
+    success, out = run_command(f"{sys.executable} -m mypy {SRC_DIR}", capture_output=True)
     if not success:
         print_error(f"Mypy check failed:\n{out}")
     else:
