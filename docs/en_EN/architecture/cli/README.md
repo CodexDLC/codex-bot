@@ -1,38 +1,45 @@
-# 🛠️ CLI
+# CLI — Scaffolding and Management Engine
 
-[⬅️ Back](../../README.md) | [🏠 Docs Root](../../../README.md)
-
-The `cli` module provides a command-line interface for rapid feature development and project scaffolding in the `codex-bot` framework.
+The CLI (Command Line Interface) in **codex-bot** is a powerful automation tool that accompanies your project at every stage: from initial setup to adding new capabilities. It ensures your project always adheres to the framework's architectural standards.
 
 ---
 
-## 🧠 The Why
+## 💎 CLI Philosophy
 
-### Standardized Scaffolding
-In a feature-based architecture, every module must follow a strict directory structure (handlers, logic, ui, resources, etc.). Manually creating these folders and files is error-prone and tedious. The `codex-bot` CLI automates this process, ensuring that every new feature is consistent with the framework's standards from the start.
-
-### Rapid Prototyping
-By using pre-defined templates, developers can generate a fully functional "Hello World" feature (including FSM states, keyboards, and orchestrators) in seconds. This allows for faster iteration and prototyping of new bot capabilities.
-
----
-
-## 🔄 The Flow
-
-1. **Command:** The developer runs `codex-bot create-feature <name> [--type redis]`.
-2. **Template Loading:** The CLI loads the appropriate `.py.tpl` files from the library's internal `templates` directory.
-3. **Variable Injection:** The CLI injects the feature name, class names, and keys into the templates.
-4. **File Creation:** A new directory structure is created in the project's `features/` folder, populated with the generated files.
-5. **Integration:** The developer is prompted to add the new feature path to the `INSTALLED_FEATURES` list in their settings.
+The main goal of the CLI is to eliminate routine file and directory creation ("boilerplate"). We follow three core principles:
+1. **Professional Start**: Projects are immediately ready for DB, Redis, and i18n integration.
+2. **Isolation**: Each feature is created in its own directory with all necessary layers (Logic, UI, Handlers).
+3. **Safe Integration**: The CLI respects your existing code and avoids overwriting critical project files.
 
 ---
 
-## 🗺️ Module Map
+## 🏗 Core Commands
 
-| Component | Description |
-|:---|:---|
-| **[📄 API Reference](../../../api/cli.md)** | Technical details for CLI commands. |
-| **[📄 create-feature](../../../api/cli.md#create-feature)** | Scaffolding command for new features. |
+| Command | Purpose | Key Features |
+| :--- | :--- | :--- |
+| **`startproject`** | Initialize a new bot | Interactive wizard, stack configuration, Smart Merge mode. |
+| **`create-feature`** | Add a business module | **Interactive mode**: helps you choose the type (Telegram/Redis) and name. |
+| **`inspect`** | Debugging tool | Verify tokens and retrieve bot information directly via API. |
 
 ---
 
-**Last Updated:** 2025-02-07
+## 🚀 Interactivity and Flexibility
+
+Generation commands (`startproject` and `create-feature`) support two modes of operation:
+
+1. **Interactive (Wizard)**: Simply run the command without arguments. The CLI will ask necessary questions, offer choices, and validate your input.
+2. **Command-line (Arguments)**: For power users or automation scripts, all parameters can be passed via flags (e.g., `--name my_feature --type redis`). In this case, no questions will be asked.
+
+---
+
+## 🎨 Smart Merge Mode
+
+If you run `codex-bot startproject` in a directory that already contains a project (e.g., Django or FastAPI), the CLI enters **Smart Merge** mode:
+- Configuration files (`pyproject.toml`, `manage.py`, `.env`) are created with a `.bot` suffix.
+- Your bot package is isolated within the `src/{bot_name}` directory.
+
+---
+
+## 🧭 Related Sections
+- **[Getting Started](../../guide/getting_started.md)** — Practical CLI usage.
+- **[Discovery](../engine/discovery.md)** — How the engine finds what the CLI creates.

@@ -1,79 +1,40 @@
-# ⚙️ Engine
+# Engine — The Core Infrastructure
 
-[⬅️ Back](../../README.md) | [🏠 Docs Root](../../../README.md)
-
-The `engine` module provides the core infrastructure for building and running an `aiogram` bot with `codex-bot`.
+The `Engine` is a collection of systems responsible for the bot's lifecycle, automated component assembly, and integration with external services. This is where the "magic" of **codex-bot** happens, allowing you to write significantly less boilerplate code.
 
 ---
 
-## 🧠 The Why
+## 💎 Engine Philosophy
 
-### Parametric Assembly
-In a large bot, the main router and dispatcher can become cluttered with imports. The `engine` module solves this by using **Parametric Assembly** (via `RouterBuilder` and `BotBuilder`). This allows you to explicitly control the order of middleware and features without hardcoding them in a single file.
-
-### Feature Discovery
-The `FeatureDiscoveryService` automates the registration of features (routers, orchestrators, menu configs, and garbage states). This follows the **Django INSTALLED_APPS** pattern, making it easy to add or remove features by simply updating a list in your settings.
+The engine is built on the **Convention over Configuration** principle. This means that by following a standardized directory structure, the engine will automatically discover your features, connect routers, and configure translations without a single line of manual registration.
 
 ---
 
-## 🔄 The Flow
+## 🏗 Key Subsystems
 
-1. **Discovery:** `FeatureDiscoveryService` scans the `installed_features` list and imports their `handlers.py` and `feature_setting.py`.
-2. **Assembly:** `RouterBuilder` collects all `Router` objects from the discovered features and includes them in the main router.
-3. **Configuration:** `BotBuilder` creates the `Bot` and `Dispatcher` instances, injecting the discovered features and middlewares in the specified order.
-4. **Startup:** The bot starts polling, with all features and infrastructure (i18n, throttling, container) ready to handle requests.
-
----
-
-## 💻 Bot Assembly Example
-
-`BotBuilder` allows you to assemble the bot and dispatcher while explicitly controlling the order of middleware connections.
-
-```python
-import asyncio
-from aiogram.fsm.storage.memory import MemoryStorage
-from codex_bot.engine.factory.bot_builder import BotBuilder
-from codex_bot.engine.middlewares.container import ContainerMiddleware
-from codex_bot.engine.middlewares.throttling import ThrottlingMiddleware
-
-async def main():
-    # 1. Initialize the builder
-    builder = BotBuilder(
-        bot_token="YOUR_TOKEN",
-        fsm_storage=MemoryStorage()
-    )
-
-    # 2. Add middlewares in the desired order
-    # (e.g., container first, then throttling)
-    builder.add_middleware(ContainerMiddleware(container=my_container))
-    builder.add_middleware(ThrottlingMiddleware(redis=redis_client))
-
-    # 3. Build the bot and dispatcher
-    bot, dp = builder.build()
-
-    # 4. Connect feature routers (via RouterBuilder)
-    # dp.include_router(main_router)
-
-    # 5. Start polling
-    await dp.start_polling(bot)
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
+| Subsystem | Purpose | Description |
+| :--- | :--- | :--- |
+| **[Discovery](./discovery.md)** | Auto-feature Search | Scans directories and registers orchestrators and routers. |
+| **[BotBuilder](./factory.md)** | Bot Assembler | A fluent interface for configuring the Bot, Dispatcher, and Middleware. |
+| **[Container](./container.md)** | DI Container | A centralized registry for all project services and clients. |
+| **[Middlewares](./middlewares.md)** | Middlewares | Standard stack: Throttling, User Validation, and Director Injection. |
+| **[I18n](./i18n.md)** | Localization | Smart translation management and path-based locale isolation. |
+| **[HTTP/DB](./http_db.md)** | Clients | Base abstractions for interacting with APIs and databases. |
 
 ---
 
-## 🗺️ Module Map
+## 🚀 Startup Flow
 
-| Component | Description |
-|:---|:---|
-| **[📄 Router Builder](../../../api/router_builder.md)** | `build_main_router` and `collect_feature_routers`. |
-| **[📄 Discovery](../../../api/discovery.md)** | `FeatureDiscoveryService` for auto-discovery and registration. |
-| **[📄 Factory](../../../api/factory.md)** | `BotBuilder` for creating `Bot` and `Dispatcher`. |
-| **[📄 Middlewares](../../../api/middlewares.md)** | `UserValidation`, `Throttling`, `Container`, and `I18n` middlewares. |
-| **[📄 HTTP Client](../../../api/http.md)** | `BaseApiClient` with connection pooling. |
-| **[📄 I18n Compiler](../../../api/i18n.md)** | `compile_locales` for Fluent (.ftl) files. |
+When you start the bot, the Engine performs the following steps:
+1. **Container Initialization**: Settings and clients (DB, Redis) are loaded.
+2. **Discovery**: Features are scanned, and orchestrators are instantiated.
+3. **BotBuilder**: The Dispatcher object is assembled, and all system middlewares are connected.
+4. **I18n**: Locales are compiled, and the translation middleware is attached.
+5. **Startup**: The bot begins listening to Telegram and (if configured) Redis Streams. The framework activates only the subsystems you explicitly enabled.
+6. **Webhooks**: A web server is started to handle incoming webhooks (currently in development).
 
 ---
 
-**Last Updated:** 2025-03-09
+## 🧭 Related Components
+- **[Director](../services/director/README.md)** — uses data prepared by the engine.
+- **[ViewSender](../services/view_sender/README.md)** — initialized via the BotBuilder.

@@ -1,68 +1,76 @@
-# Стандарты документации проекта Codex Tools
+# Codex Bot Documentation Standard
 
-## 1. 📂 Общая структура разделов (Domain-Driven Structure)
-Мы делим документацию не по файлам кода, а по **Назначению (Domain/Service)**, чтобы структура была готова к превращению в монорепо или набор отдельных библиотек.
+## 1. 📂 Domain-Driven Structure
+We divide documentation not by code files, but by **Purpose (Domain/Service)**. This structure ensures readiness for monorepo expansion or separate library extraction.
 
-| Раздел (RU/EN) | Описание | Состав (примеры) |
+| Section (EN/RU) | Description | Content (examples) |
 | :--- | :--- | :--- |
-| architecture/domains/ | Чистая бизнес-логика (Ядро) | booking, calculator, calendar |
-| architecture/services/ | Инфраструктурные сервисы | llm, notifications, worker, redis |
-| architecture/platform/ | Базовые утилиты и конфиги | common, core, settings, schemas |
-| architecture/adapters/ | Мосты к фреймворкам | django, arq |
+| architecture/domains/ | Core Business Logic | booking, calculator, calendar |
+| architecture/services/ | Infrastructure Services | llm, notifications, worker, redis |
+| architecture/platform/ | Base Utils & Configs | common, core, settings, schemas |
+| architecture/adapters/ | Framework Bridges | django, arq |
 
 ---
 
-## 2. 🛠 API Reference (docs/api/) — Зеркало кода
-Здесь используются Markdown-файлы на каждый ключевой Python-модуль. Структура в `docs/api/` должна полностью повторять путь в `src/`.
+## 2. 🛠 API Reference (docs/api/) — Code Mirror
+Markdown files in this section mirror the Python module structure in `src/`.
 
-- **Иерархия:** Если в коде есть `src/codex_tools/booking/chain_finder.py`, то в API будет `docs/api/booking/chain_finder.md`.
-- **Группировка:** В меню MkDocs это выглядит как: `API Reference -> booking -> chain_finder`.
-- **Наполнение:** Каждый файл содержит директиву `::: codex_tools.module_name`, которая автоматически вытягивает классы и функции из кода.
-
----
-
-## 3. 🗺 Architecture Guides — Зеркало логики
-Здесь мы описываем **Домен целиком**, чтобы была видна общая картина взаимодействия.
-
-Внутри `architecture/domains/` (или `services/`):
-- **Папка на Домен:** Создаем подпапку для каждого крупного узла (например, `architecture/domains/booking/`).
-- **Файлы внутри:**
-    - `README.md` — Входная точка: общая схема, назначение домена, быстрый старт.
-    - `logic_deep_dive.md` — (Опционально) Детальное описание сложных алгоритмов (например, `ChainFinder`).
-    - `data_flow.md` — Схема прохождения данных (от DTO до ответа).
+- **Hierarchy:** If the code is at `src/codex_bot/fsm/state_manager.py`, the API doc should be at `docs/api/fsm/state_manager.md`.
+- **Grouping:** In the MkDocs menu: `API Reference -> fsm -> state_manager`.
+- **Content:** Each file uses the `::: codex_bot.module_name` directive to automatically extract classes and functions from docstrings.
 
 ---
 
-## 4. 🧭 Обновленный маппинг (Пример)
+## 3. 🗺 Architecture Guides — Logic Mirror
+These guides describe the **Domain as a whole** to provide a high-level overview of interactions.
 
-| Тип контента | Путь в коде | Путь в Docs (RU/EN) | Стиль изложения |
+Inside `architecture/domains/` (or `services/`):
+- **Domain Folder:** Create a subfolder for each major node (e.g., `architecture/domains/booking/`).
+- **Files inside:**
+    - `README.md` — Entry point: general diagram, domain purpose, quick start.
+    - `logic_deep_dive.md` — (Optional) Detailed description of complex algorithms (e.g., `ChainFinder`).
+    - `data_flow.md` — Data flow diagram (from DTO to response).
+
+---
+
+## 4. 🧭 Content Mapping Example
+
+| Content Type | Code Path | Docs Path (EN/RU) | Writing Style |
 | :--- | :--- | :--- | :--- |
-| **API** | `booking/dto.py` | `docs/api/booking/dto.md` | Справочник: поля, типы, валидация. |
-| **API** | `booking/chain_finder.py` | `docs/api/booking/chain_finder.md` | Справочник: аргументы методов, возвращаемые значения. |
-| **Архитектура** | `booking/` | `docs/[lang]/architecture/domains/booking/README.md` | Гайд: как использовать эти DTO и Finder вместе. |
+| **API** | `fsm/state_manager.py` | `docs/api/fsm/state_manager.md` | Reference: fields, types, validation. |
+| **API** | `base/view_dto.py` | `docs/api/base/view_dto.md` | Reference: DTO structure and immutability rules. |
+| **Architecture** | `fsm/` | `docs/[lang]/architecture/services/fsm/README.md` | Guide: How to use state isolation and GC. |
 
 ---
 
 ## 5. 🚀 Evolution (Roadmap & Tasks)
-Для управления развитием проекта используется папка `docs/evolution/`. Она идентична в RU и EN версиях.
+The `docs/evolution/` folder is used for project development management. It is identical in both RU and EN versions.
 
-- **Roadmap:** `docs/evolution/roadmap.md` — Глобальный план развития.
-- **Tasks:** `docs/evolution/tasks/[domain_name]/[task_name].md` — Конкретные задачи.
-- **Связь с архитектурой:** Каждая задача должна ссылаться на текущую архитектуру или API, которые она меняет.
-    - *Пример:* `Affected API: [api/llm/protocol.md](../../../api/llm/protocol.md)`.
-
----
-
-## 6. ☯️ Правило Зеркальности (Strict Mirroring)
-RU и EN папки должны быть структурно идентичны.
-Если в `docs/en_EN/architecture/domains/booking.md` добавлена новая схема — она обязана появиться в `docs/ru_RU/...`.
-Технические детали (типы, аргументы) не копируются, а указываются ссылкой на **API Reference**.
+- **Roadmap:** `docs/evolution/roadmap.md` — Global development plan.
+- **Tasks:** `docs/evolution/tasks/[domain_name]/[task_name].md` — Specific feature tasks.
+- **Architecture Links:** Every task must reference the API or Architecture guide it affects.
 
 ---
 
-## 7. 🧭 Навигационный стандарт (Breadcrumbs)
-В начале каждого файла обязательна навигация для удобства перемещения:
+## 6. 🛠 Development Standards (Code Quality)
+
+- **Zero Any:** Using `Any` is strictly prohibited. Use `Protocol`, `TypeVar`, or `Generic` for unknown types.
+- **Strict Protocols:** Always use `@runtime_checkable` protocols for Dependency Inversion.
+- **Google-style Docstrings:** Every class and public method MUST have docstrings with `Args`, `Returns`, `Raises`, and `Example` blocks.
+- **Stateless Core:** Services and Orchestrators must not store user state in `self`. Use the `Director` context.
+- **I18n Namespacing:** All Fluent keys (`.ftl`) MUST start with the feature prefix (e.g., `auth-login-btn`) to prevent collisions during automated merging.
+
+---
+
+## 7. ☯️ Strict Mirroring Rule
+The `ru_RU` and `en_EN` folders must be structurally identical.
+If a new diagram is added to `docs/en_EN/architecture/domains/booking.md`, it **must** appear in the corresponding RU file.
+
+---
+
+## 8. 🧭 Navigation Standard (Breadcrumbs)
+Every file must start with breadcrumbs for easy navigation:
 
 ```markdown
-[⬅️ Назад к разделу](../README.md) | [🗺 Roadmap](../../evolution/roadmap.md) | [🏠 Главная](../../../README.md)
+[⬅️ Back to Section](../README.md) | [🗺 Roadmap](../../evolution/roadmap.md) | [🏠 Home](../../../README.md)
 ```

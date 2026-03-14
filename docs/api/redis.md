@@ -1,19 +1,32 @@
-# redis — Redis Stream integration
+# redis — Redis Stream processing and event routing
 
-## RedisRouter
+Infrastructure for building Event-Driven architecture based on Redis Streams.
 
-::: codex_bot.redis.router.RedisRouter
-
-## BotRedisDispatcher
+## Dispatcher
+Central hub for event distribution.
 
 ::: codex_bot.redis.dispatcher.BotRedisDispatcher
 
-## RedisStreamProcessor
+---
+
+## Stream Processor
+Polling loop for event streams (Consumer Group).
 
 ::: codex_bot.redis.stream_processor.RedisStreamProcessor
 
+---
+
+## Router
+Tool for registering event handlers.
+
+::: codex_bot.redis.router.RedisRouter
+
+---
+
 ## Protocols
 
-::: codex_bot.redis.dispatcher.RetrySchedulerProtocol
-
+### StreamStorageProtocol
 ::: codex_bot.redis.stream_processor.StreamStorageProtocol
+
+### RetrySchedulerProtocol
+::: codex_bot.redis.dispatcher.RetrySchedulerProtocol

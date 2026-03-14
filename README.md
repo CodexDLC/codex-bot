@@ -1,71 +1,97 @@
-# Codex Bot Framework
+# codex-bot Framework 🚀
 
 [![PyPI version](https://img.shields.io/pypi/v/codex-bot.svg)](https://pypi.org/project/codex-bot/)
 [![Python versions](https://img.shields.io/pypi/pyversions/codex-bot.svg)](https://pypi.org/project/codex-bot/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-**Codex Bot** is a professional, feature-based framework built on top of [Aiogram 3.x](https://github.com/aiogram/aiogram). It provides a reusable, production-ready infrastructure for building complex, scalable Telegram bots with a focus on stateless UI management and high-load Redis integration.
-
----
-
-## 🚀 Key Features
-
-- **Feature-based Architecture**: Organize your bot into independent, reusable features.
-- **Stateless Orchestrators**: Manage UI logic without storing state in memory, making your bot horizontally scalable.
-- **Redis Stream Integration**: Native support for high-load event processing with Consumer Groups.
-- **Advanced FSM**: Automatic UI cleanup with `GarbageStateRegistry` and structured state management.
-- **Unified View System**: Consistent message rendering across different platforms using DTOs.
-- **Fluent-based I18n**: Powerful localization engine with project-level isolation and automatic compilation.
-- **CLI Scaffolding**: Rapidly generate new features with pre-defined templates.
+**codex-bot** is a professional, industrial-grade framework built on top of [Aiogram 3.x](https://github.com/aiogram/aiogram). It provides a robust, **feature-based** architecture for building complex Telegram ecosystems, from standalone bots to smart clients driven by external backends.
 
 ---
 
-## 📦 Installation
+## 💻 How it looks in code
 
-Install the core library:
-```bash
-pip install codex-bot
-```
-
-Install with optional dependencies:
-```bash
-pip install "codex-bot[redis,i18n,http]"
-```
-
----
-
-## 🛠 Quick Start
+Clean, state-independent orchestrators with automated dependency injection and **Smart Navigation**:
 
 ```python
-from codex_bot import BotBuilder, BaseBotOrchestrator, Director
-from codex_bot.base.view_dto import ViewResultDTO
+# features/telegram/profile/logic/orchestrator.py
+from codex_bot.base import BaseBotOrchestrator, ViewResultDTO, UnifiedViewDTO
+from codex_bot.director import Director
 
-# 1. Define your feature orchestrator
-class MyFeatureOrchestrator(BaseBotOrchestrator[None]):
-    async def render_content(self, payload: None, director: Director) -> ViewResultDTO:
-        return ViewResultDTO(text="Hello from Codex Bot!")
+class ProfileOrchestrator(BaseBotOrchestrator[dict]):
+    async def render_content(self, payload: dict, director: Director) -> ViewResultDTO | UnifiedViewDTO:
+        # 1. Fetch data via API/DB (Returns Envelope: meta + payload)
+        raw_response = await director.container.api.get_user_profile(director.user_id)
 
-# 2. Build and run your bot
-builder = BotBuilder(token="YOUR_TELEGRAM_TOKEN")
-builder.register_orchestrator("main", MyFeatureOrchestrator())
-builder.run_polling()
+        # 2. THE KILLER FEATURE: Smart Resolver
+        # If your backend returns "X-Bot-Next-Scene: banned",
+        # the Director automatically switches the user to the "banned" scene.
+        data = await director.resolve(raw_response)
+
+        if isinstance(data, UnifiedViewDTO):
+            return data  # Seamless redirect managed by the backend!
+
+        # 3. Pure business logic with clean UI separation
+        return self.ui.render_profile_screen(data)
 ```
 
 ---
 
-## 📚 Documentation
+## 💎 Key Philosophy & Features
 
-- [English Documentation](https://codexdlc.github.io/codex-bot/en_EN/)
-- [Русская документация](https://codexdlc.github.io/codex-bot/ru_RU/)
-- [**Changelog**](CHANGELOG.md) — see what's new in the latest versions.
+### 🏛 Stateless Architecture & Smart Resolver
+Orchestrators and services do not store user state in memory. All request context is encapsulated within the `Director` object. With the **Smart Resolver** pattern, the Director can automatically handle navigation instructions received from any data source, making your bot horizontally scalable and backend-driven.
+
+### 🧩 Feature-based Organization
+Independent business modules (features) with isolated handlers, logic, and FSM namespaces.
+- **Convention over Configuration**: `FeatureDiscoveryService` automatically finds and registers features, routers, and orchestrators.
+- **Namespaced FSM**: `BaseStateManager` isolates data under `draft:<feature_key>`, preventing data collisions.
+
+### 🧹 Smart UI & Garbage Collection
+- **ViewSender Service**: Manages persistent **Menu** and **Content** messages. It synchronizes UI by editing messages, ensuring a "Single Page Application" feel.
+- **Garbage Collector**: Automatically deletes old UI elements (keyboards/messages) during transitions or flow completion.
+
+### 🌍 Professional I18n Engine
+A powerful localization system built for multi-bot environments with path-based isolation and automatic Fluent (.ftl) compilation.
+
+---
+
+## 🚀 Quick Start (CLI)
+
+### 1. Initialize Project
+```bash
+# Works for new AND existing projects (Django, FastAPI, etc.)
+codex-bot startproject my_bot
+```
+
+### 2. Add Feature & Run
+```bash
+codex-bot create-feature  # Interactive wizard
+python manage.py run
+```
+
+---
+
+## 🔄 Redis Stream Integration
+Handle background events with familiar decorator-based syntax:
+
+```python
+@redis_router.message("order.confirmed")
+async def handle_order(payload: dict, container: BaseBotContainer):
+    await container.view_sender.send_content(
+        chat_id=payload["user_id"],
+        text="✅ Your order is confirmed!"
+    )
+```
+
+---
+
+## 📚 Documentation Center
+
+*   🌐 **[English Documentation](https://codexdlc.github.io/codex-bot/en_EN/)** (including **[Roadmap](./docs/en_EN/roadmap.md)**)
+*   🇷🇺 **[Русская документация](https://codexdlc.github.io/codex-bot/ru_RU/)** (раздел **[Roadmap](./docs/ru_RU/roadmap.md)**)
+*   📜 **[Changelog](./CHANGELOG.md)** — See what's new in the latest version.
 
 ---
 
 ## 📄 License
-
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
-
----
-
-### 🇷🇺 Краткое описание (RU)
-**Codex Bot** — это профессиональный фреймворк для создания Telegram-ботов на базе Aiogram 3.x. Он предоставляет готовую инфраструктуру для разработки сложных и масштабируемых систем, используя архитектуру на основе "фич", stateless-оркестраторы и глубокую интеграцию с Redis Streams.
+This project is licensed under the **Apache License 2.0**. Developed by **Codex Team**.

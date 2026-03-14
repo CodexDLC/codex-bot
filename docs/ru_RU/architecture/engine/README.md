@@ -1,79 +1,39 @@
-# ⚙️ Engine
+# Engine — Ядро инфраструктуры
 
-[⬅️ Back](../../README.md) | [🏠 Docs Root](../../../README.md)
-
-Модуль `engine` предоставляет основную инфраструктуру для сборки и запуска `aiogram` бота с использованием `codex-bot`.
+`Engine` (Движок) — это совокупность систем, отвечающих за жизненный цикл бота, автоматическую сборку компонентов и интеграцию с внешними сервисами. Именно здесь сосредоточена вся "магия" **codex-bot**, которая позволяет писать меньше кода для настройки.
 
 ---
 
-## 🧠 Почему так?
+## 💎 Философия Движка
 
-### Параметрическая сборка (Parametric Assembly)
-В большом боте главный роутер и диспетчер могут стать перегруженными импортами. Модуль `engine` решает это через **Параметрическую сборку** (через `RouterBuilder` и `BotBuilder`). Это позволяет явно контролировать порядок мидлварей и фич без хардкода в одном файле.
-
-### Автообнаружение фич (Feature Discovery)
-`FeatureDiscoveryService` автоматизирует регистрацию фич (роутеров, оркестраторов, конфигов меню и мусорных состояний). Это следует паттерну **Django INSTALLED_APPS**, позволяя легко добавлять или удалять фичи простым обновлением списка в настройках.
+Движок построен на принципе **Convention over Configuration** (Соглашение важнее конфигурации). Это значит, что если вы следуете стандартной структуре папок, движок сам найдет ваши фичи, подключит роутеры и настроит переводы без единой строчки ручного кода.
 
 ---
 
-## 🔄 Поток данных (The Flow)
+## 🏗 Ключевые подсистемы
 
-1. **Обнаружение:** `FeatureDiscoveryService` сканирует список `installed_features` и импортирует их `handlers.py` и `feature_setting.py`.
-2. **Сборка:** `RouterBuilder` собирает все объекты `Router` из обнаруженных фич и включает их в главный роутер.
-3. **Конфигурация:** `BotBuilder` создает экземпляры `Bot` и `Dispatcher`, инжектируя обнаруженные фичи и мидлвари в заданном порядке.
-4. **Запуск:** Бот начинает поллинг, со всеми фичами и инфраструктурой (i18n, throttling, container), готовыми к обработке запросов.
-
----
-
-## 💻 Пример сборки бота
-
-`BotBuilder` позволяет собрать бота и диспетчер, явно контролируя порядок подключения мидлварей.
-
-```python
-import asyncio
-from aiogram.fsm.storage.memory import MemoryStorage
-from codex_bot.engine.factory.bot_builder import BotBuilder
-from codex_bot.engine.middlewares.container import ContainerMiddleware
-from codex_bot.engine.middlewares.throttling import ThrottlingMiddleware
-
-async def main():
-    # 1. Инициализируем билдер
-    builder = BotBuilder(
-        bot_token="YOUR_TOKEN",
-        fsm_storage=MemoryStorage()
-    )
-
-    # 2. Добавляем мидлвари в нужном порядке
-    # (например, сначала контейнер, потом троттлинг)
-    builder.add_middleware(ContainerMiddleware(container=my_container))
-    builder.add_middleware(ThrottlingMiddleware(redis=redis_client))
-
-    # 3. Собираем бота и диспетчер
-    bot, dp = builder.build()
-
-    # 4. Подключаем роутеры фич (через RouterBuilder)
-    # dp.include_router(main_router)
-
-    # 5. Запускаем
-    await dp.start_polling(bot)
-
-if __name__ == "__main__":
-    asyncio.run(main())
-```
+| Подсистема | Назначение | Описание |
+| :--- | :--- | :--- |
+| **[Discovery](./discovery.md)** | Авто-поиск фич | Сканирует папки и регистрирует оркестраторы и роутеры. |
+| **[BotBuilder](./factory.md)** | Сборщик бота | Fluent-интерфейс для настройки Bot, Dispatcher и Middleware. |
+| **[Container](./container.md)** | DI-контейнер | Единое хранилище всех сервисов и клиентов проекта. |
+| **[Middlewares](./middlewares.md)** | Прослойки | Стандартный стек: Throttling, User Validation, Director Injection. |
+| **[I18n](./i18n.md)** | Локализация | Умная работа с переводами и изоляция локалей. |
+| **[HTTP/DB](./http_db.md)** | Клиенты | Базовые абстракции для работы с API и базами данных. |
 
 ---
 
-## 🗺️ Карта модуля
+## 🚀 Жизненный цикл (Startup Flow)
 
-| Компонент | Описание |
-|:---|:---|
-| **[📄 Router Builder](../../../api/router_builder.md)** | `build_main_router` и `collect_feature_routers`. |
-| **[📄 Discovery](../../../api/discovery.md)** | `FeatureDiscoveryService` для автообнаружения и регистрации. |
-| **[📄 Factory](../../../api/factory.md)** | `BotBuilder` для создания `Bot` и `Dispatcher`. |
-| **[📄 Middlewares](../../../api/middlewares.md)** | `UserValidation`, `Throttling`, `Container` и `I18n` мидлвари. |
-| **[📄 HTTP Client](../../../api/http.md)** | `BaseApiClient` с пулом соединений. |
-| **[📄 I18n Compiler](../../../api/i18n.md)** | `compile_locales` для Fluent (.ftl) файлов. |
-
+Когда вы запускаете бота, Движок выполняет следующие шаги:
+1. **Инициализация Контейнера**: Загружаются настройки и клиенты (БД, Redis).
+2. **Discovery**: Сканируются фичи, создаются оркестраторы.
+3. **BotBuilder**: Собирается объект Dispatcher, подключаются все системные мидлвари.
+4. **I18n**: Компилируются локали и подключается middleware переводов.
+5. **Startup**: Бот начинает слушать Telegram и (если настроено) Redis Streams. Фреймворк активирует только те подсистемы, которые вы явно включили в настройках или выбрали в CLI-визарде.
+6. **Webhooks**: Запускается веб-сервер для обработки входящих вебхуков (пока в разработке).
 ---
 
-**Последнее обновление:** 2025-03-09
+## 🧭 Связанные компоненты
+- **[Director](../services/director/README.md)** — использует данные, подготовленные движком.
+- **[ViewSender](../services/view_sender/README.md)** — инициализируется через BotBuilder.

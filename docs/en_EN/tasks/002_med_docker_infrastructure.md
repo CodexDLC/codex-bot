@@ -1,24 +1,18 @@
-# Task 002: Docker Infrastructure Scaffolding
+# Task 002: Docker Infrastructure
 
-**Priority:** 🟡 Medium
-**Status:** 📅 Planned
-**Target Version:** v0.3.0
+**Priority:** Medium
+**Status:** Planned
+**Category:** Infrastructure
 
-## 📝 Description
-Provide a production-ready Docker configuration automatically when generating a new project. To maintain a clean project structure, all deployment-related files will be placed in a dedicated `deploy/` directory.
+---
 
-## 🎯 Objectives
-1. **Infrastructure Isolation**: Create a `deploy/` folder in the project root.
-2. **Templates**: Create `Dockerfile.j2` and `docker-compose.yml.j2` inside the `deploy/` folder.
-3. **Environment**: Ensure Docker Compose correctly maps `.env` variables from the root.
-4. **Context Management**: Configure Docker to use the project root as the build context while keeping configs in `deploy/`.
+## 🎯 Goal
+Provide ready-to-use Docker templates (`Dockerfile.j2`, `docker-compose.yml.j2`) during new project generation. All infrastructure files will be managed within a dedicated `deploy/` directory.
 
-## 🛠 Technical Notes
-- Base image: `python:3.12-slim`.
-- Command to run: `docker-compose -f deploy/docker-compose.yml up`.
-- Use a non-root user inside the container for security.
+## 🛠 Features
+1. **Infrastructure Isolation**: Create `deploy/` folder in the project root.
+2. **Templates**: Include `Dockerfile.j2` and `docker-compose.yml.j2` for user onboarding.
+3. **Environment Sync**: Ensure Compose correctly loads variables from the root `.env`.
 
-## ✅ Definition of Done
-- [ ] Project contains a `deploy/` directory with `Dockerfile` and `docker-compose.yml`.
-- [ ] Bot starts correctly using the configuration from the `deploy/` folder.
-- [ ] Redis and DB connections work "out-of-the-box" via compose networks.
+---
+[⬅️ Back to Roadmap](../roadmap.md)
