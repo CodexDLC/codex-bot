@@ -64,5 +64,7 @@ dmypy.json
 .env
 .envrc
 *.log
+.agents/
+.claude/
 # Temporary files from LocalesCompiler (if they leak into root)
 bot_locales_*

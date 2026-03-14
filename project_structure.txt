@@ -4,34 +4,132 @@ Project Structure: Full Project
 📂 codex_bot/
     📄 .gitignore
     📄 .pre-commit-config.yaml
-    📄 CLAUDE.md
+    📄 .secrets.baseline
+    📄 CHANGELOG.md
     📄 LICENSE
+    📄 NOTICE
     📄 README.md
+    📄 docker_monitor.log
     📄 mkdocs.yml
     📄 project_structure.txt
     📄 pyproject.toml
     📂 .claude/
+        📄 project.md
         📄 settings.local.json
+    📂 dist/
+        📄 codex_bot-0.1.0-py3-none-any.whl
+        📄 codex_bot-0.1.0.tar.gz
     📂 docs/
+        📄 DOCUMENTATION_STANDARD.md
         📄 README.md
+        📄 changelog.md
         📂 api/
             📄 README.md
             📄 animation.md
             📄 base.md
-            📄 cli.md
             📄 director.md
             📄 discovery.md
             📄 factory.md
             📄 fsm.md
             📄 helper.md
             📄 http.md
+            📄 i18n.md
             📄 middlewares.md
             📄 redis.md
             📄 router_builder.md
             📄 sender.md
             📄 url_signer.md
-        📂 guide/
-            📄 getting_started.md
+        📂 en_EN/
+            📄 README.md
+            📄 roadmap.md
+            📂 architecture/
+                📄 README.md
+                📂 cli/
+                    📄 README.md
+                📂 engine/
+                    📄 README.md
+                    📄 container.md
+                    📄 discovery.md
+                    📄 factory.md
+                    📄 http_db.md
+                    📄 i18n.md
+                    📄 middlewares.md
+                📂 services/
+                    📂 animation/
+                        📄 README.md
+                    📂 base/
+                        📄 README.md
+                    📂 director/
+                        📄 README.md
+                    📂 fsm/
+                        📄 README.md
+                    📂 helper/
+                        📄 README.md
+                        📄 url_signer.md
+                    📂 redis/
+                        📄 README.md
+                    📂 view_sender/
+                        📄 README.md
+            📂 guide/
+                📄 getting_started.md
+            📂 tasks/
+                📄 001_high_integrated_debug_system.md
+                📄 002_med_docker_infrastructure.md
+                📄 003_high_in_bot_guide_system.md
+                📄 004_high_redis_fsm_integration.md
+                📄 005_med_header_driven_navigation.md
+                📄 006_med_redis_stream_contract.md
+                📄 007_med_sqlalchemy_sender_storage.md
+                📄 008_high_multi_broker_support.md
+                📄 009_high_webhook_server.md
+                📄 ARCHIVE.md
+                📄 backlog.md
+        📂 ru_RU/
+            📄 README.md
+            📄 roadmap.md
+            📂 architecture/
+                📄 README.md
+                📂 cli/
+                    📄 README.md
+                📂 engine/
+                    📄 README.md
+                    📄 container.md
+                    📄 discovery.md
+                    📄 factory.md
+                    📄 http_db.md
+                    📄 i18n.md
+                    📄 middlewares.md
+                📂 services/
+                    📄 README.md
+                    📂 animation/
+                        📄 README.md
+                    📂 base/
+                        📄 README.md
+                    📂 director/
+                        📄 README.md
+                    📂 fsm/
+                        📄 README.md
+                    📂 helper/
+                        📄 README.md
+                        📄 url_signer.md
+                    📂 redis/
+                        📄 README.md
+                    📂 view_sender/
+                        📄 README.md
+            📂 guide/
+                📄 getting_started.md
+            📂 tasks/
+                📄 001_high_integrated_debug_system.md
+                📄 002_med_docker_infrastructure.md
+                📄 003_high_in_bot_guide_system.md
+                📄 004_high_redis_fsm_integration.md
+                📄 005_med_header_driven_navigation.md
+                📄 006_med_redis_stream_contract.md
+                📄 007_med_sqlalchemy_sender_storage.md
+                📄 008_high_multi_broker_support.md
+                📄 009_high_webhook_server.md
+                📄 ARCHIVE.md
+                📄 backlog.md
     📂 site/
         📄 404.html
         📄 index.html
@@ -44,8 +142,6 @@ Project Structure: Full Project
                 📄 index.html
             📂 base/
                 📄 index.html
-            📂 cli/
-                📄 index.html
             📂 director/
                 📄 index.html
             📂 discovery/
@@ -57,6 +153,8 @@ Project Structure: Full Project
             📂 helper/
                 📄 index.html
             📂 http/
+                📄 index.html
+            📂 i18n/
                 📄 index.html
             📂 middlewares/
                 📄 index.html
@@ -118,9 +216,123 @@ Project Structure: Full Project
                 📄 main.484c7ddc.min.css.map
                 📄 palette.ab4e12ef.min.css
                 📄 palette.ab4e12ef.min.css.map
-        📂 guide/
-            📂 getting_started/
+        📂 changelog/
+            📄 index.html
+        📂 DOCUMENTATION_STANDARD/
+            📄 index.html
+        📂 en_EN/
+            📄 index.html
+            📂 architecture/
                 📄 index.html
+                📂 cli/
+                    📄 index.html
+                📂 engine/
+                    📄 index.html
+                    📂 container/
+                        📄 index.html
+                    📂 discovery/
+                        📄 index.html
+                    📂 factory/
+                        📄 index.html
+                    📂 http_db/
+                        📄 index.html
+                    📂 i18n/
+                        📄 index.html
+                    📂 middlewares/
+                        📄 index.html
+                📂 services/
+                    📂 animation/
+                        📄 index.html
+                    📂 base/
+                        📄 index.html
+                    📂 director/
+                        📄 index.html
+                    📂 fsm/
+                        📄 index.html
+                    📂 helper/
+                        📄 index.html
+                        📂 url_signer/
+                            📄 index.html
+                    📂 redis/
+                        📄 index.html
+                    📂 view_sender/
+                        📄 index.html
+            📂 guide/
+                📂 getting_started/
+                    📄 index.html
+            📂 roadmap/
+                📄 index.html
+            📂 tasks/
+                📂 001_high_integrated_debug_system/
+                    📄 index.html
+                📂 002_med_docker_infrastructure/
+                    📄 index.html
+                📂 003_high_in_bot_guide_system/
+                    📄 index.html
+                📂 004_high_metadata_driven_navigation/
+                    📄 index.html
+                📂 004_high_redis_fsm_integration/
+                    📄 index.html
+                📂 005_med_header_driven_navigation/
+                    📄 index.html
+                📂 006_med_redis_stream_contract/
+                    📄 index.html
+                📂 007_med_sqlalchemy_sender_storage/
+                    📄 index.html
+                📂 008_high_multi_broker_support/
+                    📄 index.html
+                📂 009_high_webhook_server/
+                    📄 index.html
+        📂 ru_RU/
+            📄 index.html
+            📂 architecture/
+                📄 index.html
+                📂 cli/
+                    📄 index.html
+                📂 engine/
+                    📄 index.html
+                    📂 container/
+                        📄 index.html
+                    📂 discovery/
+                        📄 index.html
+                    📂 factory/
+                        📄 index.html
+                    📂 http_db/
+                        📄 index.html
+                    📂 i18n/
+                        📄 index.html
+                    📂 middlewares/
+                        📄 index.html
+                📂 services/
+                    📄 index.html
+                    📂 animation/
+                        📄 index.html
+                    📂 base/
+                        📄 index.html
+                    📂 director/
+                        📄 index.html
+                    📂 fsm/
+                        📄 index.html
+                    📂 helper/
+                        📄 index.html
+                        📂 url_signer/
+                            📄 index.html
+                    📂 redis/
+                        📄 index.html
+                    📂 view_sender/
+                        📄 index.html
+            📂 guide/
+                📂 getting_started/
+                    📄 index.html
+            📂 roadmap/
+                📄 index.html
+            📂 tasks/
+                📂 001_high_integrated_debug_system/
+                    📄 index.html
+                📂 002_med_docker_infrastructure/
+                    📄 index.html
+                📂 003_high_in_bot_guide_system/
+                    📄 index.html
         📂 search/
             📄 search_index.json
     📂 src/
@@ -136,40 +348,69 @@ Project Structure: Full Project
                 📄 view_dto.py
             📂 cli/
                 📄 __init__.py
-                📄 commands.py
+                📄 main.py
+                📄 management.py
+                📄 templating.py
+                📂 commands/
+                    📄 create_feature.py
+                    📄 migrations.py
+                    📄 startproject.py
+                    📄 utils.py
             📂 director/
                 📄 __init__.py
                 📄 director.py
                 📄 protocols.py
             📂 engine/
                 📄 __init__.py
+                📄 container.py
+                📄 protocols.py
+                📄 runner.py
+                📂 database/
+                    📄 __init__.py
+                    📄 engine.py
+                    📄 models.py
+                    📄 repository.py
                 📂 discovery/
                     📄 __init__.py
                     📄 service.py
                 📂 factory/
                     📄 __init__.py
-                    📄 builder.py
+                    📄 bot_builder.py
                 📂 http/
                     📄 __init__.py
                     📄 api_client.py
+                📂 i18n/
+                    📄 __init__.py
+                    📄 locales_compiler.py
                 📂 middlewares/
                     📄 __init__.py
                     📄 container.py
+                    📄 database.py
+                    📄 director_middleware.py
                     📄 i18n.py
-                    📄 security.py
                     📄 throttling.py
                     📄 user_validation.py
                 📂 router_builder/
                     📄 __init__.py
-                    📄 builder.py
+                    📄 router_builder.py
+            📂 features/
+                📄 __init__.py
+                📂 errors/
+                    📄 __init__.py
+                    📄 default_errors.py
+                    📄 handlers.py
+                    📄 orchestrator.py
+                    📄 ui.py
             📂 fsm/
                 📄 __init__.py
                 📄 common_fsm_handlers.py
                 📄 garbage_collector.py
+                📄 state_helper.py
                 📄 state_manager.py
             📂 helper/
                 📄 __init__.py
                 📄 context_helper.py
+                📄 id_inspector.py
             📂 redis/
                 📄 __init__.py
                 📄 dispatcher.py
@@ -177,28 +418,169 @@ Project Structure: Full Project
                 📄 stream_processor.py
             📂 sender/
                 📄 __init__.py
+                📄 memory_storage.py
                 📄 protocols.py
+                📄 redis_storage.py
                 📄 sender_keys.py
                 📄 sender_manager.py
                 📄 view_sender.py
             📂 templates/
                 📂 feature/
-                    📄 callbacks.py.tpl
-                    📄 contract.py.tpl
-                    📄 dto.py.tpl
-                    📄 feature.py.tpl
-                    📄 feature_redis.py.tpl
-                    📄 formatters.py.tpl
-                    📄 handlers.py.tpl
-                    📄 handlers_redis.py.tpl
-                    📄 keyboards.py.tpl
-                    📄 orchestrator.py.tpl
-                    📄 orchestrator_redis.py.tpl
-                    📄 texts.py.tpl
-                    📄 ui.py.tpl
+                    📂 redis/
+                        📄 feature_setting.py.j2
+                        📂 handlers/
+                            📄 __init__.py.j2
+                            📄 handlers.py.j2
+                        📂 logic/
+                            📄 orchestrator.py.j2
+                    📂 telegram/
+                        📄 __init__.py
+                        📄 feature_setting.py.j2
+                        📂 contracts/
+                            📄 contract.py.j2
+                        📂 handlers/
+                            📄 __init__.py.j2
+                            📄 handlers.py.j2
+                        📂 logic/
+                            📄 orchestrator.py.j2
+                            📄 state_manager.py.j2
+                        📂 resources/
+                            📄 callbacks.py.j2
+                            📄 dto.py.j2
+                            📄 formatters.py.j2
+                            📄 keyboards.py.j2
+                            📄 texts.py.j2
+                        📂 ui/
+                            📄 ui.py.j2
+                📂 project/
+                    📂 root/
+                        📄 .env.example.j2
+                        📄 .env.j2
+                        📄 .gitignore.j2
+                        📄 README.md.j2
+                        📄 manage.py.j2
+                        📄 pyproject.toml.j2
+                        📂 docs/
+                            📄 architecture_cheat_sheet.md.j2
+                            📄 message_flow.md.j2
+                    📂 src/
+                        📄 alembic.ini.j2
+                        📄 launcher.py.j2
+                        📂 core/
+                            📄 config.py.j2
+                            📄 container.py.j2
+                            📄 errors.py.j2
+                            📄 factory.py.j2
+                            📄 logging.py.j2
+                            📄 settings.py.j2
+                        📂 features/
+                            📂 telegram/
+                                📂 bot_menu/
+                                    📄 __init__.py.j2
+                                    📄 feature_setting.py.j2
+                                    📄 orchestrator.py.j2
+                                    📂 contracts/
+                                        📄 __init__.py.j2
+                                        📄 menu_contract.py.j2
+                                    📂 handlers/
+                                        📄 __init__.py.j2
+                                        📄 handlers.py.j2
+                                        📄 menu_handlers.py.j2
+                                    📂 logic/
+                                        📄 __init__.py.j2
+                                        📄 orchestrator.py.j2
+                                    📂 resources/
+                                        📄 __init__.py.j2
+                                        📄 callbacks.py.j2
+                                        📄 dto.py.j2
+                                        📄 keyboards.py.j2
+                                        📄 texts.py.j2
+                                    📂 ui/
+                                        📄 __init__.py.j2
+                                        📄 menu_ui.py.j2
+                                        📄 ui.py.j2
+                                📂 commands/
+                                    📄 __init__.py.j2
+                                    📄 feature_setting.py.j2
+                                    📂 contracts/
+                                        📄 __init__.py.j2
+                                        📄 auth_contract.py.j2
+                                        📄 contract.py.j2
+                                    📂 handlers/
+                                        📄 __init__.py.j2
+                                        📄 handlers.py.j2
+                                        📄 router.py.j2
+                                    📂 logic/
+                                        📄 __init__.py.j2
+                                        📄 orchestrator.py.j2
+                                    📂 resources/
+                                        📄 __init__.py.j2
+                                        📄 callbacks.py.j2
+                                        📄 formatters.py.j2
+                                        📄 keyboards.py.j2
+                                        📄 texts.py.j2
+                                    📂 ui/
+                                        📄 __init__.py.j2
+                                        📄 commands_ui.py.j2
+                        📂 infrastructure/
+                            📄 database.py.j2
+                            📂 database/
+                                📂 migrations/
+                                    📄 env.py.j2
+                                    📄 script.py.mako.j2
+                            📂 migrations/
+                                📄 env.py.j2
+                            📂 models/
+                                📄 base.py.j2
+                            📂 redis/
+                                📄 container.py.j2
+                            📂 repositories/
+                                📄 base.py.j2
+                        📂 resources/
+                            📂 locales/
+                                📂 en/
+                                    📄 messages.ftl.j2
+                                📂 ru/
+                                    📄 messages.ftl.j2
+                        📂 shared/
+                            📂 schemas/
+                                📄 user.py.j2
             📂 url_signer/
                 📄 __init__.py
                 📄 service.py
+    📂 tests/
+        📄 conftest.py
+        📄 test_template_consistency.py
+        📄 test_templates.py
+        📂 animation/
+            📄 test_animation_service.py
+        📂 base/
+            📄 test_base_orchestrator.py
+            📄 test_view_dto.py
+        📂 director/
+            📄 test_director.py
+        📂 engine/
+            📂 factory/
+                📄 test_bot_builder.py
+            📂 http/
+                📄 test_api_client.py
+            📂 middlewares/
+                📄 test_throttling.py
+        📂 fsm/
+            📄 test_garbage_collector.py
+            📄 test_state_manager.py
+        📂 helper/
+            📄 test_context_helper.py
+        📂 integration/
+            📄 test_placeholder.py
+        📂 redis/
+            📄 __init__.py
+            📄 test_dispatcher.py
+            📄 test_router.py
+        📂 sender/
+            📄 test_sender_keys.py
+        📂 url_signer/
+            📄 test_url_signer.py
     📂 tools/
         📄 __init__.py
         📂 dev/

@@ -6,16 +6,18 @@ build-backend = "hatchling.build"
 name = "codex-bot"
 dynamic = ["version"]
 description = "Feature-based Aiogram framework library — reusable infrastructure for Telegram bots"
-readme = "README.md"
-license = { text = "MIT" }
-requires-python = ">=3.12"
-authors = [{ name = "Codex Team" }]
+readme = { file = "README.md", content-type = "text/markdown" }
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+authors = [{ name = "CodexDLC" }]
 keywords = ["aiogram", "telegram", "bot", "framework"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Framework :: AsyncIO",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Communications :: Chat",
     "Topic :: Software Development :: Libraries :: Application Frameworks",
@@ -25,8 +27,6 @@ dependencies = [
     "pydantic>=2.0,<3.0",
     "pydantic-settings>=2.0",
     "jinja2>=3.1.0",
-    "loguru>=0.7.0",
-    "questionary>=2.0.0",
     "python-dotenv>=1.0.0",
 ]
 
@@ -38,7 +38,11 @@ Changelog = "https://github.com/codexdlc/codex-bot/blob/main/CHANGELOG.md"
 Issues = "https://github.com/codexdlc/codex-bot/issues"
 
 [project.optional-dependencies]
-redis = ["redis[asyncio]>=5.0,<6.0"]
+cli = [
+    "loguru>=0.7.0",
+    "questionary>=2.0.0",
+]
+redis = ["redis>=5.0,<6.0"]
 arq = ["arq>=0.25"]
 i18n = ["aiogram-i18n>=1.4"]
 http = ["httpx>=0.27,<1.0"]
@@ -46,7 +50,7 @@ sqlite = ["aiosqlite>=0.19.0"]
 postgres = ["asyncpg>=0.29.0"]
 db = ["sqlalchemy>=2.0", "alembic>=1.13.0", "codex-bot[sqlite,postgres]"]
 all = [
-    "codex-bot[redis,arq,i18n,http,db]",
+    "codex-bot[cli,redis,arq,i18n,http,db]",
 ]
 dev = [
     "codex-bot[all]",
@@ -64,6 +68,7 @@ docs = [
     "mkdocs>=1.5",
     "mkdocs-material>=9.0",
     "mkdocstrings[python]>=0.24",
+    "mkdocs-include-markdown-plugin",
 ]
 
 [project.scripts]
@@ -76,7 +81,7 @@ source = "vcs"
 packages = ["src/codex_bot"]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py310"
 line-length = 120
 
 [tool.ruff.lint]
@@ -84,17 +89,15 @@ select = ["E", "F", "I", "UP", "B", "C4", "SIM"]
 ignore = ["B008"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.10"
 strict = true
-plugins = ["pydantic.mypy"]
+plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
 
 [[tool.mypy.overrides]]
 module = [
-    "redis.*",
     "arq.*",
     "alembic.*",
     "loguru.*",
-    "questionary.*",
     "dotenv.*"
 ]
 ignore_missing_imports = true
