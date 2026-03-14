@@ -1,8 +1,9 @@
 """
-RedisRouter — Router for grouping Redis Stream handlers.
+Redis Routing Abstraction — Modular handler organization for stream events.
 
-Analogous to aiogram.Router, but for messages from Redis Stream.
-Allows organizing handlers modularly by feature.
+Provides a foundational mechanism for grouping and filtering Redis Stream
+handlers by message type. Analogous to the native Aiogram router, it
+facilitates decoupled business logic registration for asynchronous event flows.
 """
 
 from collections.abc import Callable
