@@ -8,21 +8,28 @@ All existing feature handlers using ``redis_router = BotStreamRouter()`` will
 continue to work without changes when FSM support is added.
 """
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-try:
-    from codex_platform.stream_broker import StreamRouter  # type: ignore[import-not-found]
-except ImportError:
-    # Failsafe for environment without codex-platform
-    class StreamRouter:  # type: ignore
-        def include_router(self, *args: Any, **kwargs: Any) -> Any:
-            pass
+if TYPE_CHECKING:
+    from codex_platform.stream_broker import (
+        BaseStreamRouter as StreamRouter,
+    )
+else:
+    try:
+        from codex_platform.stream_broker import (
+            BaseStreamRouter as StreamRouter,
+        )
+    except ImportError:
+        # Failsafe for environment without codex-platform
+        class StreamRouter:
+            def include_router(self, *args: Any, **kwargs: Any) -> Any:
+                pass
 
-        def on(self, *args: Any, **kwargs: Any) -> Any:
-            def decorator(func: Any) -> Any:
-                return func
+            def on(self, *args: Any, **kwargs: Any) -> Any:
+                def decorator(func: Any) -> Any:
+                    return func
 
-            return decorator
+                return decorator
 
 
 class BotStreamRouter(StreamRouter):  # type: ignore

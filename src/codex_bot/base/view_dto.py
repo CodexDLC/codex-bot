@@ -6,7 +6,7 @@ encapsulate UI state. All DTOs are immutable (frozen) to ensure thread-safety
 and prevent unintended side effects during transfer between asynchronous services.
 """
 
-from typing import Literal
+from typing import Any, Literal
 
 from aiogram.types import InlineKeyboardMarkup
 from pydantic import BaseModel, ConfigDict
@@ -91,5 +91,15 @@ class UnifiedViewDTO(BaseModel):
     session_key: int | str | None = None
     mode: Literal["channel", "topic", "user"] | None = None
     message_thread_id: int | None = None
+
+    async def send(self, message: Any, i18n: Any = None) -> Any:
+        """
+        Backward compatibility bridge for generated handlers.
+        Sends the content part of the DTO to the user.
+        """
+        if not self.content:
+            return None
+
+        return await message.answer(text=self.content.text, reply_markup=self.content.kb, parse_mode="HTML")
 
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)

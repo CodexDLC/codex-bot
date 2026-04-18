@@ -14,9 +14,9 @@ class BotSettings(BaseSettings):
     debug: bool = Field(default=True, alias="DEBUG")
 
     # Infrastructure Service Flags
-    use_redis: bool = Field(default={{ use_redis | lower }}, alias="USE_REDIS")
-    use_redis_fsm: bool = Field(default={{ use_redis_fsm | lower }}, alias="USE_REDIS_FSM")
-    use_redis_streams: bool = Field(default={{ use_redis_streams | lower }}, alias="USE_REDIS_STREAMS")
+    use_redis: bool = Field(default={{ use_redis }}, alias="USE_REDIS")
+    use_redis_fsm: bool = Field(default={{ use_redis_fsm }}, alias="USE_REDIS_FSM")
+    use_redis_streams: bool = Field(default={{ use_redis_streams }}, alias="USE_REDIS_STREAMS")
 
     {% if use_redis %}
     # Redis is required for FSM and Stream Processing

@@ -9,16 +9,24 @@ Strictly follows the convention:
 import importlib
 import logging
 from types import ModuleType
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from aiogram import Router
 
-try:
-    from codex_platform.stream_broker import StreamRouter  # type: ignore[import-not-found]
-except ImportError:
+if TYPE_CHECKING:
+    from codex_platform.stream_broker import StreamBroker, StreamRouter
+    from codex_platform.system_models import NodeInfo
+else:
+    try:
+        from codex_platform.stream_broker import StreamBroker, StreamRouter
+        from codex_platform.system_models import NodeInfo
+    except ImportError:
 
-    class StreamRouter:  # type: ignore
-        pass
+        class StreamRouter:
+            pass
+
+        StreamBroker = object
+        NodeInfo = object
 
 
 from ...fsm.garbage_collector import GarbageStateRegistry
@@ -32,7 +40,7 @@ class FeatureDiscoveryService:
 
     Operates on a 'convention over configuration' principle to dynamically
     locate and initialize business features. Manages the discovery of
-    Aiogram routers, Redis stream handlers, UI menu configurations, and
+    Aiogram routers, Redis stream handlers, UI menu configurations, andч
     FSM garbage collection states.
     """
 
@@ -79,6 +87,39 @@ class FeatureDiscoveryService:
             if module:
                 self._register_redis_handlers(module, name)
                 self._register_garbage(module)
+
+    def discover_models(self, project_name: str | None = None) -> None:
+        """
+        Dynamically imports the 'models' module for each installed feature.
+        This ensures all SQLAlchemy models are registered with Base.metadata
+        for Alembic migration discovery.
+
+        Args:
+            project_name: The root package name of the project (e.g., "my_bot").
+        """
+        prefix = f"{project_name}." if project_name else ""
+
+        # 1. Discover models in Telegram features
+        for name in self._features:
+            module_path = f"{prefix}{self._prefix}.telegram.{name}.models"
+            try:
+                importlib.import_module(module_path)
+                log.debug(f"FeatureDiscovery | Imported models from: {module_path}")
+            except ImportError as e:
+                # If module is missing, it's fine — some features might not have models
+                if name in str(e):
+                    log.debug(f"FeatureDiscovery | No models found in: {module_path}")
+                else:
+                    log.warning(f"FeatureDiscovery | Error importing models from {module_path}: {e}")
+
+        # 2. Discover models in Redis features
+        for name in self._redis_features:
+            module_path = f"{prefix}{self._prefix}.redis.{name}.models"
+            try:
+                importlib.import_module(module_path)
+                log.debug(f"FeatureDiscovery | Imported models from: {module_path}")
+            except ImportError:
+                pass
 
     def create_feature_orchestrators(self, container: Any) -> dict[str, Any]:
         """

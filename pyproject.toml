@@ -103,7 +103,8 @@ module = [
     "arq.*",
     "alembic.*",
     "loguru.*",
-    "dotenv.*"
+    "dotenv.*",
+    "codex_platform.*"
 ]
 ignore_missing_imports = true
 
