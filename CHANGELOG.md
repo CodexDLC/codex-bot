@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-04-18
+
+### Fixed
+
+- **API Restoration**: Restored `FeatureDiscoveryService.discover_models()` to fix broken Alembic model registration in generated projects.
+- **Bridge Methods**: Restored `UnifiedViewDTO.send()` as a compatibility bridge for existing feature handlers.
+- **Template Bugfixes**: Fixed boolean literal generation in `config.py.j2` by removing the invalid `| lower` filter (resolving `True`/`False` token errors).
+- **Mypy Hardening**: Added `codex_platform.*` overrides to project templates to ensure new projects pass type-checking out of the box.
+- **Security Patches**: Updated `aiohttp` (3.13.4), `pygments` (2.20.0), and `pytest` (9.0.3) to resolve 12 identified vulnerabilities.
+- **Import Resilience**: Implemented robust `TYPE_CHECKING` patterns for optional dependencies (`codex-platform`) to prevent linting paradoxes.
+
 ## [0.1.1] - 2025-03-09
 
 ### Added
