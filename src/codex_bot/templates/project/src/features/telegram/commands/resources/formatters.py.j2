@@ -1,0 +1,20 @@
+# Formatter for transforming data into strings for the UI
+from aiogram.types import Message
+
+{% if use_i18n %}
+from aiogram_i18n import I18nContext
+{% endif %}
+
+class MessageInfoFormatter:
+    """Formats debug information about a message."""
+    @staticmethod
+    def format_chat_ids(m: Message) -> str:
+        user_id = m.from_user.id if m.from_user else "N/A"
+        chat_id = m.chat.id
+
+        {% if use_i18n %}
+        i18n = I18nContext.get_current()
+        return i18n.commands.id.info(user_id=str(user_id), chat_id=str(chat_id))
+        {% else %}
+        return f"<b>User ID:</b> <code>{user_id}</code>\n<b>Chat ID:</b> <code>{chat_id}</code>"
+        {% endif %}

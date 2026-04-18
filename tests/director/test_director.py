@@ -9,7 +9,12 @@ from codex_bot.director.protocols import OrchestratorProtocol
 
 @pytest.fixture
 def director(mock_fsm_context, mock_container):
-    return Director(container=mock_container, state=mock_fsm_context, chat_id=123, user_id=12345)
+    return Director(
+        container=mock_container,
+        state=mock_fsm_context,
+        context_id=123,
+        session_key=12345,
+    )
 
 
 @pytest.mark.asyncio
@@ -41,14 +46,77 @@ async def test_director_set_scene_not_found(director, mock_container):
 
 
 @pytest.mark.asyncio
-async def test_director_get_state(director, mock_fsm_context):
-    mock_fsm_context.get_state = AsyncMock(return_value="current_state")
-    state = await director.state.get_state()
-    assert state == "current_state"
+async def test_director_guards_blocking(director, mock_container):
+    orchestrator = MagicMock(spec=OrchestratorProtocol)
+    mock_container.features = {"feature": orchestrator}
+
+    # Create a blocking guard
+    blocking_view = UnifiedViewDTO(alert_text="Access Denied")
+    guard = AsyncMock()
+    guard.check_access = AsyncMock(return_value=blocking_view)
+    mock_container.transition_guards = [guard]
+
+    view = await director.set_scene("feature")
+
+    assert view == blocking_view
+    orchestrator.handle_entry.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_director_update_data(director, mock_fsm_context):
-    mock_fsm_context.update_data = AsyncMock()
-    await director.state.update_data(a=1, b=2)
-    mock_fsm_context.update_data.assert_called_once_with(a=1, b=2)
+async def test_director_guards_allowing(director, mock_container):
+    orchestrator = MagicMock(spec=OrchestratorProtocol)
+    orchestrator.handle_entry = AsyncMock(return_value=UnifiedViewDTO(content=ViewResultDTO(text="OK")))
+    mock_container.features = {"feature": orchestrator}
+
+    # Create an allowing guard
+    guard = AsyncMock()
+    guard.check_access = AsyncMock(return_value=True)
+    mock_container.transition_guards = [guard]
+
+    view = await director.set_scene("feature")
+
+    assert view.content.text == "OK"
+    orchestrator.handle_entry.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_director_recursion_prevention_set_scene(director, mock_container):
+    orchestrator = MagicMock(spec=OrchestratorProtocol)
+    mock_container.features = {"feature": orchestrator}
+
+    # Manually trigger recursion limit
+    director._redirect_count = Director.MAX_REDIRECTS
+    view = await director.set_scene("feature")
+
+    assert isinstance(view, UnifiedViewDTO)
+    assert "цикл" in view.alert_text
+
+
+@pytest.mark.asyncio
+async def test_director_resolve_safe_parsing(director, mock_container):
+    orchestrator = MagicMock(spec=OrchestratorProtocol)
+    orchestrator.handle_entry = AsyncMock(return_value=UnifiedViewDTO(content=ViewResultDTO(text="Redirected")))
+    mock_container.features = {"target": orchestrator}
+
+    # 1. Valid envelope
+    data = {"meta": {Director.REDIRECT_KEY: "target"}, "payload": {"key": "value"}}
+    view = await director.resolve(data)
+    assert view.content.text == "Redirected"
+    orchestrator.handle_entry.assert_called_with(director=director, payload={"key": "value"})
+
+    # 2. Redirect not in meta (should not redirect)
+    data = {Director.REDIRECT_KEY: "target", "other": "data"}
+    result = await director.resolve(data)
+    assert result == data  # Returns original dict as payload
+
+
+@pytest.mark.asyncio
+async def test_director_session_enrichment(director, mock_container):
+    orchestrator = MagicMock(spec=OrchestratorProtocol)
+    orchestrator.handle_entry = AsyncMock(return_value=UnifiedViewDTO(content=ViewResultDTO(text="OK")))
+    mock_container.features = {"feature": orchestrator}
+
+    view = await director.set_scene("feature")
+
+    assert view.chat_id == 123
+    assert view.session_key == 12345

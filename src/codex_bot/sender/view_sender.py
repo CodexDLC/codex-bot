@@ -1,13 +1,12 @@
 """
-ViewSender — STATELESS service for sending and synchronizing Telegram bot UI.
+ViewSender — Stateless engine for UI synchronization in Telegram.
 
-Manages two persistent messages (Menu and Content):
-edits them if they exist, creates new ones if not.
-Stores their IDs via SenderManager to avoid cluttering the chat.
-
-IMPORTANT: The class must be Stateless — it does not store user state in self.
-ViewSender is a singleton. All context is passed through method arguments.
+The ViewSender manages the lifecycle of persistent UI components (Menu and Content).
+It ensures that the bot's interface remains consistent by editing existing
+messages or replacing them when necessary, effectively minimizing chat clutter.
 """
+
+from __future__ import annotations
 
 import contextlib
 import logging
@@ -22,37 +21,26 @@ log = logging.getLogger(__name__)
 
 
 class ViewSender:
-    """STATELESS service for sending and updating UI messages.
+    """Stateless service for persistent UI orchestration.
 
-    Works with two persistent bot messages in the chat:
+    The ViewSender implements a "Dual-Message" UI pattern, maintaining two
+    distinct messages per session:
 
-    - **Menu** — navigation block (section buttons).
-    - **Content** — information block (current feature data).
+    1. **Menu**: A high-level navigation block for switching features.
+    2. **Content**: A dynamic block representing the current feature's state.
 
-    The ``send()`` algorithm:
+    The synchronization algorithm performs atomic updates to these blocks,
+    handling message deletion (e.g., of trigger commands) and state
+    persistence via an external `SenderManager`.
 
-    1. Deletes the ``trigger_message`` (e.g., the ``/start`` command).
-    2. If ``clean_history=True`` — deletes old Menu and Content.
-    3. Edits existing messages (or creates new ones).
-    4. Saves current ``message_id`` via SenderManager.
-
-    .. note::
-        ``alert_text`` from ``UnifiedViewDTO`` is intentionally not processed by ViewSender —
-        alert requires access to ``CallbackQuery.answer()``, which ViewSender does not have.
-        Call ``await call.answer(view.alert_text)`` in the handler before ``await sender.send(view)``.
+    Note:
+        `alert_text` in `UnifiedViewDTO` is not handled by this service as it
+        requires a `CallbackQuery` context. It must be answered manually in
+        the handler prior to calling `send()`.
 
     Args:
-        bot: Aiogram Bot instance.
-        manager: SenderManager for storing UI coordinates.
-
-    Example:
-        ```python
-        sender = ViewSender(bot=bot, manager=sender_manager)
-        # In a handler:
-        if view.alert_text:
-            await call.answer(view.alert_text, show_alert=True)
-        await sender.send(view)
-        ```
+        bot: Instance of the `aiogram.Bot` used for Telegram API interactions.
+        manager: A `SenderManager` providing access to UI coordinate persistence.
     """
 
     def __init__(self, bot: Bot, manager: SenderManager) -> None:
@@ -60,24 +48,33 @@ class ViewSender:
         self.manager = manager
 
     async def send(self, view: UnifiedViewDTO) -> None:
-        """Main UI synchronization method.
+        """Synchronize the current UI state with Telegram.
 
-        All context variables are local, without writing to self.
-        Safe for concurrent calls from different users.
+        Analyzes the `UnifiedViewDTO` to perform required deletions, updates,
+        and message deliveries. This method is thread-safe and stateless,
+        operating strictly on the provided DTO.
 
         Args:
-            view: ``UnifiedViewDTO`` from the orchestrator. Must contain
-                  ``session_key`` and ``chat_id`` (filled by the Director).
+            view: The structured UI definition from the orchestrator.
+                Must contain valid routing metadata (chat_id, session_key).
+
+        Side Effects:
+            - Deletes the trigger message if `trigger_message_id` is present.
+            - Updates persistent UI coordinates in the backend storage.
+            - Modifies existing messages in the target Telegram chat.
         """
         if not view.session_key or not view.chat_id:
             log.error("ViewSender | missing session_key or chat_id in UnifiedViewDTO")
             return
 
         # Local variables — each send() call is isolated
-        key = view.session_key
         chat_id = view.chat_id
         thread_id = view.message_thread_id
         is_channel = self._detect_channel(view)
+
+        # Logic: In public chats, UI messages are shared.
+        # We ignore session_key and bind coordinates to chat/topic ID.
+        key = (f"{chat_id}:{thread_id}" if thread_id else str(chat_id)) if is_channel else str(view.session_key)
 
         # 1. Delete trigger message (e.g., /start)
         if view.trigger_message_id:
@@ -117,16 +114,18 @@ class ViewSender:
         coords: dict[str, int],
         chat_id: int | str,
     ) -> None:
-        """Deletes Menu and Content messages from the chat.
+        """Deletes Menu and Content messages from the chat safely.
 
         Args:
             coords: Dictionary with ``menu_msg_id`` and ``content_msg_id``.
             chat_id: Chat ID for deletion.
         """
-        for msg_id in (coords.get("menu_msg_id"), coords.get("content_msg_id")):
-            if msg_id:
-                with contextlib.suppress(TelegramAPIError):
-                    await self.bot.delete_message(chat_id=chat_id, message_id=msg_id)
+        # Use set to avoid double deletion of the same ID and filter None
+        msg_ids = set(filter(None, (coords.get("menu_msg_id"), coords.get("content_msg_id"))))
+
+        for msg_id in msg_ids:
+            with contextlib.suppress(TelegramAPIError):
+                await self.bot.delete_message(chat_id=chat_id, message_id=msg_id)
 
     async def _process_message(
         self,

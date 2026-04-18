@@ -1,20 +1,24 @@
 """
-Director — Coordinator of cross-feature transitions.
+Director — Request-scoped coordinator for cross-feature navigation.
 
-The Director knows how to transition from one feature to another: change the FSM state,
-get the required orchestrator from the container, and call its handle_entry().
-Orchestrators are stateless — the Director passes itself as context with each call.
+The Director oversees transitions between independent feature modules by managing
+FSM state changes and orchestrator resolution. It acts as a bridge between the
+DI container and the business logic of individual features, ensuring that
+orchestrators remain stateless and decoupled from session management.
 """
 
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from aiogram.fsm.context import FSMContext
 
 from ..base.view_dto import UnifiedViewDTO
-from .protocols import ContainerProtocol, OrchestratorProtocol
+from .protocols import ContainerProtocol
+
+if TYPE_CHECKING:
+    pass
 
 log = logging.getLogger(__name__)
 
@@ -22,86 +26,116 @@ log = logging.getLogger(__name__)
 class Director:
     """Coordinator of transitions between features (scenes).
 
-    Instantiated in the handler for each incoming request.
-    Stores the request context (user_id, chat_id, state) and passes itself
-    to orchestrators as an argument — no mutable state in the orchestrator.
+    The Director is instantiated per incoming request (request-scoped) to capture
+    abstract session and context identifiers. It facilitates the
+    "Stateful Navigation, Stateless Logic" pattern.
 
-    Args:
-        container: Project's DI container with a ``features`` attribute.
-        state: FSM context of the current user.
-        user_id: Telegram ID of the user.
-        chat_id: Target chat ID.
-        trigger_id: ID of the trigger message (e.g., /start) for subsequent deletion.
-
-    Example:
-        ```python
-        director = Director(
-            container=container,
-            state=state,
-            user_id=callback.from_user.id,
-            chat_id=callback.message.chat.id,
-        )
-        view = await director.set_scene(feature="booking", payload=None)
-        await sender.send(view)
-        ```
+    Attributes:
+        REDIRECT_KEY: Primary metadata key for-driven navigation.
+        MAX_REDIRECTS: Maximum number of allowed redirects (loop prevention).
     """
+
+    REDIRECT_KEY = "__next_scene__"
+    MAX_REDIRECTS: int = 5
 
     def __init__(
         self,
         container: ContainerProtocol,
         state: FSMContext | None = None,
-        user_id: int | None = None,
-        chat_id: int | None = None,
+        session_key: int | str | None = None,
+        context_id: int | str | None = None,
         trigger_id: int | None = None,
     ) -> None:
         self.container = container
         self.state = state
-        self.user_id = user_id
-        self.chat_id = chat_id
+        self.session_key = session_key
+        self.context_id = context_id
         self.trigger_id = trigger_id
 
-    async def set_scene(self, feature: str, payload: Any = None) -> Any:
-        """Cross-feature transition: changes FSM state and calls the feature orchestrator.
+        self._redirect_count: int = 0
 
-        Algorithm:
-        1. Retrieves the orchestrator by key from ``container.features``.
-        2. Sets the FSM state if the orchestrator has declared it.
-        3. Passes itself to ``handle_entry(director=self, payload=payload)``.
-        4. Enriches the result with ``chat_id`` and ``session_key`` as a fallback.
+    async def resolve(self, data: Any) -> UnifiedViewDTO | Any:
+        """Analyze incoming data for navigation instructions and resolve redirects.
 
         Args:
-            feature: Orchestrator key in ``container.features`` (e.g., ``"booking"``).
-            payload: Data to pass to ``handle_entry()``.
+            data: Incoming request payload.
 
         Returns:
-            UnifiedViewDTO or any orchestrator result. None if the feature is not found.
+            A `UnifiedViewDTO` if a redirect was resolved, else business payload.
         """
+        # Recursion protection
+        if self._redirect_count >= self.MAX_REDIRECTS:
+            log.error("Director | Loop detected in resolve transitions")
+            return data
+
+        # Safe parsing: Only dicts contain metadata for transitions
+        if not isinstance(data, dict):
+            return data
+
+        # 1. Detect Navigation inside meta envelope
+        meta = data.get("meta", {})
+        if not isinstance(meta, dict):
+            # Fallback if meta is not a dict
+            return data
+
+        next_feature = meta.get(self.REDIRECT_KEY)
+
+        # 2. Extract Business Payload
+        # If 'payload' key exists, it's the payload, otherwise it's the whole dict
+        payload = data.get("payload", data)
+
+        # 3. Handle redirect
+        if next_feature and isinstance(next_feature, str):
+            log.info(f"Director | Smart Resolve: Redirecting to '{next_feature}'")
+            return await self.set_scene(feature=next_feature, payload=payload)
+
+        return payload
+
+    async def set_scene(self, feature: str, payload: Any = None) -> UnifiedViewDTO | Any:
+        """Execute a cross-feature transition with Guard checks and Auto-Wrapping.
+
+        Args:
+            feature: Identifier of the target feature.
+            payload: Ephemeral data for the transition.
+        """
+        # 0. Safety Invariants
+        self._redirect_count += 1
+        if self._redirect_count > self.MAX_REDIRECTS:
+            log.error(f"Director | Redirect limit reached at '{feature}'")
+            return UnifiedViewDTO(alert_text="Ошибка навигации: обнаружен цикл")
+
         orchestrator = self.container.features.get(feature)
-
         if orchestrator is None:
-            log.error(f"Director | unknown_feature='{feature}' user_id={self.user_id}")
+            log.error(f"Director | Unknown feature='{feature}'")
             return None
 
-        # 1. FSM state change
-        if self.state and hasattr(orchestrator, "expected_state") and orchestrator.expected_state:
-            await self.state.set_state(orchestrator.expected_state)
+        # 1. Transition Guards (OCP Integration)
+        for guard in self.container.transition_guards:
+            result = await guard.check_access(self, feature=feature, orchestrator=orchestrator, payload=payload)
+            if isinstance(result, UnifiedViewDTO):
+                log.warning(f"Director | Guard {guard.__class__.__name__} blocked {feature}")
+                return result
 
-        # 2. Call handle_entry (pass self as context) or render
-        if isinstance(orchestrator, OrchestratorProtocol):
-            view = await orchestrator.handle_entry(director=self, payload=payload)
-        elif hasattr(orchestrator, "render"):
-            view = await orchestrator.render(payload, self)
-        else:
-            log.warning(f"Director | orchestrator='{feature}' has no handle_entry or render")
-            return None
+        # 2. Atomic FSM State Change
+        expected_state = getattr(orchestrator, "expected_state", None)
+        if self.state and expected_state:
+            await self.state.set_state(expected_state)
 
-        # 3. Fallback enrichment of UnifiedViewDTO with session data
-        if isinstance(view, UnifiedViewDTO):
-            view = view.model_copy(
-                update={
-                    "chat_id": view.chat_id or self.chat_id,
-                    "session_key": view.session_key or self.user_id,
-                }
-            )
+        # 3. Handle Entry
+        view = await orchestrator.handle_entry(director=self, payload=payload)
+
+        # 4. Auto-Wrapping and Enrichment
+        if not isinstance(view, UnifiedViewDTO):
+            # If orchestrator returned a ViewResultDTO or raw content
+            view = UnifiedViewDTO(content=view)
+
+        # 5. Domain-Agnostic Session Enrichment
+        view = view.model_copy(
+            update={
+                "chat_id": view.chat_id or self.context_id,
+                "session_key": view.session_key or self.session_key,
+                "trigger_message_id": view.trigger_message_id or self.trigger_id,
+            }
+        )
 
         return view

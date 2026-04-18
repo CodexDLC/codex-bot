@@ -1,0 +1,7 @@
+from aiogram.filters.callback_data import CallbackData
+
+
+class {{ class_name }}Callback(CallbackData, prefix="{{ feature_key }}"):
+    """Callback for background tasks interaction."""
+    action: str
+    task_id: str | None = None

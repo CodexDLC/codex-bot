@@ -1,0 +1,51 @@
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING, Any
+
+from codex_bot.base import BaseBotOrchestrator, UnifiedViewDTO, ViewResultDTO
+
+from ..feature_setting import {{ class_name }}States
+from ..ui.ui import {{ class_name }}UI
+
+{% if use_loguru %}
+from loguru import logger as log
+{% else %}
+log = logging.getLogger(__name__)
+{% endif %}
+
+if TYPE_CHECKING:
+    from codex_bot.director import Director
+
+
+class {{ class_name }}Orchestrator(BaseBotOrchestrator[Any]):
+    """
+    Business logic and navigation for the {{ class_name }} feature.
+    """
+    def __init__(self) -> None:
+        # expected_state must be a string for Director
+        super().__init__(expected_state={{ class_name }}States.main.state)
+        self.ui = {{ class_name }}UI()
+
+    async def render_content(
+        self,
+        director: Director | None = None,
+        payload: Any = None
+    ) -> ViewResultDTO | UnifiedViewDTO:
+        """
+        Main logic for rendering feature content.
+        """
+        if director:
+            log.debug(f"{{ class_name }} | Rendering Content | session_key={director.session_key}")
+
+        return self.ui.render_main(payload)
+
+    async def handle_entry(
+        self,
+        director: Director,
+        payload: Any = None,
+    ) -> UnifiedViewDTO:
+        """Entry point into the feature. Called by Director on set_scene()."""
+        log.debug(f"{{ class_name }} | Action: Entry | session_key={director.session_key}")
+
+        return await self.render(director=director, payload=payload)

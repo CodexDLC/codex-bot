@@ -1,7 +1,9 @@
 """
-UrlSignerService — Generation of HMAC-signed URLs for Telegram Mini Apps.
+UrlSignerService — Cryptographic security service for link integrity.
 
-Provides protection against link forgery with a limited lifetime.
+Provides mechanisms for generating and verifying HMAC-signed URLs,
+ensuring the integrity and expiration of links used within Telegram Mini Apps.
+Prevents unauthorized forgery and session hijacking via link tampering.
 """
 
 import hashlib
@@ -11,24 +13,15 @@ from urllib.parse import quote_plus, urlencode
 
 
 class UrlSignerService:
-    """Generation of HMAC-signed URLs for Telegram Mini Apps.
+    """Service for securing Telegram Mini App URLs via HMAC-SHA256 signatures.
 
-    Signs URLs using HMAC-SHA256 and a timestamp.
-    This protects against forgery and limits the link's lifetime.
+    This service generates tamper-proof URLs by appending a cryptographic
+    signature based on a request identifier and a timestamp. It is
+    essential for protecting backend endpoints from unauthorized access
+    outside the intended user session.
 
     Args:
-        secret_key: Secret key for signing (string).
-
-    Example:
-        ```python
-        signer = UrlSignerService(secret_key=settings.secret_key)
-        url = signer.generate_signed_url(
-            base_url="https://myapp.example.com",
-            request_id=42,
-            action="reply",
-        )
-        # https://myapp.example.com/tma/reply/?req_id=42&ts=...&sig=...
-        ```
+        secret_key: The cryptographic key used for HMAC signature generation.
     """
 
     def __init__(self, secret_key: str) -> None:
@@ -40,29 +33,18 @@ class UrlSignerService:
         request_id: str | int,
         action: str = "reply",
     ) -> str:
-        """Generates a signed URL for a WebApp.
+        """Generate a cryptographically signed URL for Telegram Mini Apps.
 
-        Builds a URL of the form:
-        ``{base_url}/tma/{action}/?req_id=...&ts=...&sig=...``
-
-        The signature is calculated based on the string ``"{request_id}:{timestamp}"``.
+        Constructs a URL including a request identifier, current timestamp,
+        and an HMAC-SHA256 signature calculated over the combined payload.
 
         Args:
-            base_url: Root URL of the site (e.g., ``"https://myapp.example.com"``).
-            request_id: Request ID included in the signature.
-            action: Action path (default is ``"reply"``).
+            base_url: The root domain of the Mini App host.
+            request_id: A unique identifier for the specific request or entity.
+            action: The logical path component identifying the target action.
 
         Returns:
-            Full URL with signature parameters.
-
-        Example:
-            ```python
-            url = signer.generate_signed_url(
-                base_url="https://myapp.example.com",
-                request_id=123,
-                action="confirm",
-            )
-            ```
+            A fully qualified URL with integrated security parameters.
         """
         timestamp = str(int(time.time()))
         req_id_str = str(request_id)

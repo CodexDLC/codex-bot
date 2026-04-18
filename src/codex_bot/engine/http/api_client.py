@@ -1,11 +1,9 @@
 """
-BaseApiClient — Long-lived async HTTP client on top of httpx.
+Abstract API Orchestrator — Persistent asynchronous HTTP client implementation.
 
-The client is created ONCE (in the DI container at startup) and reuses
- the TCP connection pool throughout the application's lifetime. This eliminates
- the overhead of TLS handshakes for each request.
-
-Inherit to create clients for specific backend APIs.
+Provides a foundational execution context for external API interactions, utilizing
+long-lived connection pooling via `httpx`. Designed to minimize TLS handshake
+overhead and manage multi-service request lifecycles within the DI container.
 """
 
 import logging

@@ -1,7 +1,9 @@
 """
-BotBuilder — Builder pattern for creating Bot + Dispatcher.
+Bot Orchestration Factory — Builder pattern for Bot and Dispatcher initialization.
 
-Allows explicit control over the order of middleware connection.
+Encapsulates the complex configuration of Aiogram components, enforcing correctly
+ordered middleware registration (DI, Navigation, RBAC) and ensuring seamless
+integration between the bot instance and the dependency injection container.
 """
 
 from __future__ import annotations
@@ -9,38 +11,37 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from aiogram import Bot, Dispatcher
+from aiogram import BaseMiddleware, Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.base import BaseStorage
 from aiogram.fsm.storage.memory import MemoryStorage
+
+from ..middlewares.container import ContainerMiddleware
+from ..middlewares.director_middleware import DirectorMiddleware
+from ..middlewares.user_validation import UserValidationMiddleware
+from ..protocols import ContainerProtocol
 
 log = logging.getLogger(__name__)
 
 
 class BotBuilder:
-    """Builder for Bot + Dispatcher with explicit middleware management.
+    """Builder for Bot + Dispatcher with automatic core middleware management.
 
-    Allows injecting custom middleware at arbitrary points,
-    unlike the functional approach with a fixed order.
+    Ensures that essential framework middlewares are registered in the correct sequence.
+    Automatically injects the created ``Bot`` instance into the provided ``Container``.
 
     Args:
-        bot_token: Telegram bot token.
+        bot_token: Telegram bot token obtained from @BotFather.
         parse_mode: Message parsing mode (default is ``"HTML"``).
         fsm_storage: FSM storage. ``None`` → ``MemoryStorage``.
-        dispatcher_kwargs: Additional kwargs for ``Dispatcher``.
-
-    Raises:
-        ValueError: If ``bot_token`` is empty.
+        dispatcher_kwargs: Additional kwargs for ``Dispatcher`` initialization.
 
     Example:
         ```python
-        from codex_bot.engine.factory import BotBuilder
-        from codex_bot.engine.middlewares import UserValidationMiddleware, ThrottlingMiddleware
+        builder = BotBuilder(bot_token="...")
+        builder.setup_core(container=my_container)
+        builder.add_project_middleware(MyAnalyticsMiddleware())
 
-        builder = BotBuilder(bot_token=settings.bot_token, fsm_storage=RedisStorage(redis))
-        builder.add_middleware(UserValidationMiddleware())
-        builder.add_middleware(ThrottlingMiddleware(redis=redis_client))
-        builder.add_middleware(MyAnalyticsMiddleware())
         bot, dp = builder.build()
         ```
     """
@@ -52,6 +53,7 @@ class BotBuilder:
         fsm_storage: BaseStorage | None = None,
         dispatcher_kwargs: dict[str, Any] | None = None,
     ) -> None:
+        """Initializes the builder with basic settings."""
         if not bot_token:
             raise ValueError("bot_token must not be empty")
 
@@ -59,53 +61,88 @@ class BotBuilder:
         self._parse_mode = parse_mode
         self._fsm_storage: BaseStorage = fsm_storage or MemoryStorage()
         self._dispatcher_kwargs: dict[str, Any] = dispatcher_kwargs or {}
-        self._middlewares: list[Any] = []
 
-    def add_middleware(self, middleware: Any) -> BotBuilder:
-        """Adds middleware to the connection queue.
+        self._core_middlewares: list[BaseMiddleware] = []
+        self._project_middlewares: list[BaseMiddleware] = []
+        self._middlewares = self._project_middlewares  # Alias for backward compatibility in tests
+        self._container: ContainerProtocol | None = None
 
-        Middleware are connected in the order they are added.
+    def setup_core(self, container: ContainerProtocol) -> BotBuilder:
+        """Registers mandatory framework middlewares and links the container.
+
+        Registration order:
+        1. **Container Injection**: Makes the DI container available in context.
+        2. **Director Initialization**: Creates the request coordinator.
+        3. **User Validation (RBAC)**: Handles user identification and admin checks.
 
         Args:
-            middleware: Middleware instance to connect to ``dp.update``.
+            container: The project's DI container implementing ContainerProtocol.
 
         Returns:
-            ``self`` for chaining.
-
-        Example:
-            ```python
-            builder.add_middleware(UserValidationMiddleware())
-                   .add_middleware(ThrottlingMiddleware(redis))
-            ```
+            The builder instance for method chaining.
         """
-        self._middlewares.append(middleware)
+        self._container = container
+
+        # Internal core middleware setup
+        self._core_middlewares = [
+            ContainerMiddleware(container),
+            DirectorMiddleware(),
+            UserValidationMiddleware(container),
+        ]
         return self
 
-    def build(self) -> tuple[Bot, Dispatcher]:
-        """Assembles Bot and Dispatcher.
+    def add_project_middleware(self, middleware: BaseMiddleware) -> BotBuilder:
+        """Adds a project-specific middleware to the execution chain.
 
-        Creates a ``Bot`` with the specified parameters and a ``Dispatcher`` with FSM storage.
-        Connects all middleware via ``dp.update.middleware``.
+        Project middlewares are automatically registered AFTER the core framework ones.
+
+        Args:
+            middleware: Instance of an aiogram BaseMiddleware.
 
         Returns:
-            Tuple ``(bot, dispatcher)``.
+            The builder instance for method chaining.
+        """
+        self._project_middlewares.append(middleware)
+        return self
 
-        Example:
-            ```python
-            bot, dp = builder.build()
-            await dp.start_polling(bot)
-            ```
+    def add_middleware(self, middleware: BaseMiddleware) -> BotBuilder:
+        """Alias for add_project_middleware. Maintained for backward compatibility."""
+        return self.add_project_middleware(middleware)
+
+    def build(self) -> tuple[Bot, Dispatcher]:
+        """Assembles and configures Bot and Dispatcher.
+
+        1. Creates the Bot instance.
+        2. Injects the Bot into the Container (if linked via setup_core).
+        3. Initializes the Dispatcher and registers all middlewares.
+
+        Returns:
+            A tuple of (Bot, Dispatcher).
         """
         bot = Bot(
             token=self._bot_token,
             default=DefaultBotProperties(parse_mode=self._parse_mode),
         )
 
+        # Automatic Integration: Linking Bot and Container
+        if self._container:
+            self._container.set_bot(bot)
+            log.debug("BotBuilder | Automatically injected Bot instance into Container")
+
         dp = Dispatcher(storage=self._fsm_storage, **self._dispatcher_kwargs)
 
-        for middleware in self._middlewares:
-            dp.update.middleware(middleware)
-            log.debug(f"BotBuilder | Middleware registered: {middleware.__class__.__name__}")
+        # Register Core Middlewares first (Outer level)
+        for mw in self._core_middlewares:
+            dp.update.outer_middleware(mw)
+            log.debug(f"BotBuilder | Core Middleware: {mw.__class__.__name__}")
 
-        log.info(f"BotBuilder | Built bot with {len(self._middlewares)} middleware(s)")
+        # Register Project Middlewares
+        for mw in self._project_middlewares:
+            dp.update.outer_middleware(mw)
+            log.debug(f"BotBuilder | Project Middleware: {mw.__class__.__name__}")
+
+        log.info(
+            f"BotBuilder | Built with {len(self._core_middlewares)} core "
+            f"and {len(self._project_middlewares)} project middlewares"
+        )
         return bot, dp

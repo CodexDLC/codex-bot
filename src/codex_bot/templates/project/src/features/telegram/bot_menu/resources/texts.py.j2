@@ -1,0 +1,16 @@
+{% if use_i18n %}
+from aiogram_i18n import I18nContext
+{% endif %}
+
+def get_dashboard_title(mode: str = "bot_menu") -> str:
+    """Returns the title based on the current dashboard mode."""
+    {% if use_i18n %}
+    i18n = I18nContext.get_current()
+    if mode == "dashboard_admin":
+        return i18n.menu.admin.title()
+    return i18n.menu.dashboard.title()
+    {% else %}
+    if mode == "dashboard_admin":
+        return "🛠 <b>Admin Dashboard</b>"
+    return "📱 <b>Main Menu</b>"
+    {% endif %}

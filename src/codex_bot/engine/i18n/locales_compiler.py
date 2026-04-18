@@ -1,13 +1,12 @@
 """
-LocalesCompiler — Compilation of Fluent (.ftl) locales into a single tmp directory.
+Internationalization Compiler — Automated Fluent resource orchestration.
 
-Collects all .ftl files from language subfolders and merges them
-into one messages.ftl per language for passing to FluentRuntimeCore.
-
-Each project gets an isolated tmp folder based on the hash of the
-absolute path to the locales — multiple bots on one server
-do not overwrite each other's files.
+Scans the framework's feature directory for localized resources, merging
+discrepant `.ftl` files into unified language bundles. Facilitates seamless
+integration for `aiogram-i18n` with support for dynamic language resolution.
 """
+
+from __future__ import annotations
 
 import hashlib
 import logging
@@ -18,66 +17,69 @@ import tempfile
 log = logging.getLogger(__name__)
 
 
-def compile_locales(base_path: pathlib.Path) -> str:
-    """Compiles .ftl files from language subfolders into an isolated tmp directory.
+def compile_locales(features_path: pathlib.Path) -> str:
+    """Discovers and compiles .ftl files from features into an isolated tmp directory.
 
-    Collects all ``*.ftl`` files from ``{base_path}/{lang}/*.ftl``
-    into ``/tmp/bot_locales_{hash}/{lang}/messages.ftl``.
-    The resulting path is passed to ``FluentRuntimeCore``.
-
-    The folder is isolated by the hash of the absolute path: multiple bots or
-    parallel tests on the same server do not interfere with each other.
+    Algorithm:
+    1. Scans ``features_path`` for any subdirectories named ``locales``.
+    2. Inside each ``locales``, finds language folders (e.g., ``ru``, ``en``).
+    3. Merges all ``*.ftl`` files for each language into a single ``messages.ftl``.
+    4. Places results in ``/tmp/bot_locales_{hash}/{locale}/messages.ftl``.
 
     Args:
-        base_path: Path to the directory with language subfolders.
+        features_path: Root path to the features directory (e.g. src/my_bot/features).
 
     Returns:
-        Path template ``"/tmp/bot_locales_{hash}/{locale}"`` for ``FluentRuntimeCore``.
-
-    Raises:
-        OSError: If the tmp directory cannot be created or files cannot be written.
-
-    Example:
-        ```python
-        from codex_bot.engine.i18n import compile_locales
-
-        locales_path = compile_locales(Path("resources/locales"))
-        core = FluentRuntimeCore(path=locales_path)
-        ```
+        Path template string for FluentRuntimeCore: ``"/tmp/bot_locales_{hash}/{locale}"``.
     """
-    # Short hash of the absolute path — unique per project, stable between restarts
-    # usedforsecurity=False tells Bandit/linters that this is not a cryptographic hash.
-    path_hash = hashlib.md5(str(base_path.absolute()).encode(), usedforsecurity=False).hexdigest()[:8]
-    tmp_dir = pathlib.Path(tempfile.gettempdir()) / f"bot_locales_{path_hash}"
+    # 1. Prepare unique isolated directory
+    path_hash = hashlib.md5(str(features_path.absolute()).encode(), usedforsecurity=False).hexdigest()[:8]
+    tmp_root = pathlib.Path(tempfile.gettempdir()) / f"bot_locales_{path_hash}"
 
-    if tmp_dir.exists():
+    if tmp_root.exists():
         try:
-            shutil.rmtree(tmp_dir)
+            shutil.rmtree(tmp_root)
         except OSError as e:
-            log.warning(f"LocalesCompiler | Failed to clean tmp_dir (maybe in use): {e}")
+            log.warning(f"LocalesCompiler | Clean failed: {e}")
 
-    tmp_dir.mkdir(parents=True, exist_ok=True)
+    tmp_root.mkdir(parents=True, exist_ok=True)
 
-    if not base_path.exists():
-        log.warning(f"LocalesCompiler | Source path not found: {base_path}")
-        return str(tmp_dir / "{locale}")
+    if not features_path.exists():
+        log.error(f"LocalesCompiler | Path not found: {features_path}")
+        return str(tmp_root / "{locale}")
 
-    for lang_dir in base_path.iterdir():
-        if not lang_dir.is_dir():
+    # 2. Discovery and Merging
+    # Dictionary structure: { "en": ["content1", "content2"], "ru": [...] }
+    merged_data: dict[str, list[str]] = {}
+
+    # Find all 'locales' directories inside features
+    for locales_dir in features_path.rglob("locales"):
+        if not locales_dir.is_dir():
             continue
 
-        lang = lang_dir.name
-        compiled_content: list[str] = []
+        # Look for language subdirectories (ru, en, etc.)
+        for lang_dir in locales_dir.iterdir():
+            if not lang_dir.is_dir():
+                continue
 
-        for ftl_file in sorted(lang_dir.glob("*.ftl")):
-            content = ftl_file.read_text(encoding="utf-8")
-            compiled_content.append(f"### Source: {ftl_file.name} ###\n{content}\n")
+            lang = lang_dir.name
+            if lang not in merged_data:
+                merged_data[lang] = []
 
-        if compiled_content:
-            lang_tmp_dir = tmp_dir / lang
-            lang_tmp_dir.mkdir(exist_ok=True)
-            output_file = lang_tmp_dir / "messages.ftl"
-            output_file.write_text("\n".join(compiled_content), encoding="utf-8")
-            log.debug(f"LocalesCompiler | Compiled {lang} ({len(compiled_content)} files) → {output_file}")
+            # Read all FTL files in the language directory
+            for ftl_file in sorted(lang_dir.glob("*.ftl")):
+                content = ftl_file.read_text(encoding="utf-8")
+                # Add source info for easier debugging of translations
+                merged_data[lang].append(f"\n### Source: {ftl_file.as_posix()} ###\n{content}")
 
-    return str(tmp_dir / "{locale}")
+    # 3. Write results
+    for lang, contents in merged_data.items():
+        lang_tmp_dir = tmp_root / lang
+        lang_tmp_dir.mkdir(parents=True, exist_ok=True)
+
+        output_file = lang_tmp_dir / "messages.ftl"
+        output_file.write_text("\n".join(contents), encoding="utf-8")
+        log.debug(f"LocalesCompiler | Merged {len(contents)} files for '{lang}' -> {output_file}")
+
+    log.info(f"LocalesCompiler | Compiled {len(merged_data)} languages from {features_path}")
+    return str(tmp_root / "{locale}")

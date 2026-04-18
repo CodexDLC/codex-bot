@@ -1,0 +1,124 @@
+import asyncio
+from typing import Any
+
+from aiogram import Bot
+
+# 1. Base Library Imports
+from codex_bot.engine.container import BaseBotContainer
+from codex_bot.engine.discovery.service import FeatureDiscoveryService
+
+{% if use_loguru %}
+from loguru import logger as log
+{% else %}
+import logging
+log = logging.getLogger(__name__)
+{% endif %}
+
+{% if use_redis %}
+from redis.asyncio import Redis
+from codex_bot.redis.dispatcher import BotRedisDispatcher
+from codex_bot.redis.stream_processor import RedisStreamProcessor
+{% endif %}
+
+# 2. Local Project Imports
+from {{ project_name }}.core.config import BotSettings
+from {{ project_name }}.core.settings import INSTALLED_FEATURES, INSTALLED_REDIS_FEATURES
+
+{% if data_mode == 'direct' %}
+from sqlalchemy.ext.asyncio import AsyncEngine
+from codex_bot.engine.database.engine import build_engine, build_session_maker
+{% endif %}
+
+
+class BotContainer(BaseBotContainer):
+    """
+    Project-specific Dependency Injection Container.
+
+    Coordinates lifecycle of infrastructure (Redis, DB) and business logic (Features).
+    """
+
+    {% if use_redis %}
+    def __init__(self, settings: BotSettings, redis_client: Redis | None = None):
+    {% else %}
+    def __init__(self, settings: BotSettings, redis_client: None = None):
+    {% endif %}
+        # Settings protocol ensures availability of owner/superuser lists
+        super().__init__(settings, redis_client=redis_client)
+
+        # --- 1. Infrastructure (Redis Streams) ---
+        {% if use_redis_streams %}
+        self.redis_dispatcher = BotRedisDispatcher()
+        self.stream_processor = RedisStreamProcessor(
+            storage=redis_client, # type: ignore
+            stream_name="bot_events",
+            consumer_group_name="bot_group",
+            consumer_name=f"bot_worker_{settings.secret_key[:5]}"
+        )
+        {% endif %}
+
+        # --- 2. Data Persistence (SQLAlchemy) ---
+        {% if data_mode == 'direct' %}
+        self.db_engine: AsyncEngine = build_engine(
+            url=settings.database_url,
+            echo=settings.database_echo
+        )
+        # Use core factory directly from the library
+        self.session_factory = build_session_maker(self.db_engine)
+        {% endif %}
+
+        # --- 3. Feature Discovery & Scaffolding ---
+        {% if use_redis_streams %}
+        discovery_dispatcher: Any = self.redis_dispatcher
+        {% else %}
+        discovery_dispatcher = None
+        {% endif %}
+
+        # Convention over Configuration: Automatically find and mount features
+        self.discovery_service = FeatureDiscoveryService(
+            module_prefix="{{ project_name }}.features",
+            installed_features=INSTALLED_FEATURES,
+            installed_redis_features=INSTALLED_REDIS_FEATURES,
+            redis_dispatcher=discovery_dispatcher
+        )
+
+        # Discover routers and configurations
+        self.discovery_service.discover_all()
+
+        # Instantiate all discovered feature orchestrators
+        self.features = self.discovery_service.create_feature_orchestrators(self)
+
+    def set_bot(self, bot: Bot) -> None:
+        """Configures services that require an active Bot instance."""
+        super().set_bot(bot)
+
+        {% if use_redis_streams %}
+        if self.redis_client:
+            # Connect Redis dispatcher to the container and worker
+            self.redis_dispatcher.setup(container=self)
+            self.stream_processor.set_message_callback(self.redis_dispatcher.process_message)
+        {% endif %}
+
+    async def shutdown(self) -> None:
+        """Gracefully cleanup all infrastructure resources."""
+        log.info("Starting project container shutdown...")
+
+        # 1. First, shutdown features while DB/Redis are still alive
+        await super().shutdown()
+
+        # 2. Then, close infrastructure connections
+        cleanup_tasks = []
+
+        {% if data_mode == 'direct' %}
+        # No hasattr needed - we know it exists if data_mode is 'direct'
+        cleanup_tasks.append(self.db_engine.dispose())
+        {% endif %}
+
+        {% if use_redis_streams %}
+        if hasattr(self.stream_processor, "stop"):
+            cleanup_tasks.append(self.stream_processor.stop())
+        {% endif %}
+
+        if cleanup_tasks:
+            await asyncio.gather(*cleanup_tasks, return_exceptions=True)
+
+        log.info("Project container shutdown completed.")

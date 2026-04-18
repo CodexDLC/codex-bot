@@ -1,0 +1,26 @@
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from codex_bot.base import UnifiedViewDTO, ViewResultDTO
+
+{% if use_loguru %}
+from loguru import logger as log
+{% else %}
+log = logging.getLogger(__name__)
+{% endif %}
+
+
+class {{ class_name }}UI:
+    """
+    UI logic for the {{ class_name }} feature.
+    Responsible for creating views and layouts.
+    """
+    def render_main(self, payload: Any = None) -> ViewResultDTO | UnifiedViewDTO:
+        """
+        Renders the main menu/view for the feature.
+        """
+        return UnifiedViewDTO(
+            text="Hello from {{ class_name }} feature!"
+        )

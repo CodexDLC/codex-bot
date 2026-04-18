@@ -1,0 +1,29 @@
+from typing import TYPE_CHECKING, Any
+
+from loguru import logger as log
+
+from codex_bot.base import UnifiedViewDTO, ViewResultDTO
+
+if TYPE_CHECKING:
+    from codex_bot.director.director import Director
+
+
+class {{ class_name }}Orchestrator:
+    """Orchestrator for the background feature {{ class_name }} (Redis)."""
+
+    def __init__(self) -> None:
+        pass
+
+    async def render_content(
+        self,
+        director: "Director" | None = None,
+        payload: Any = None
+    ) -> ViewResultDTO | UnifiedViewDTO:
+        """
+        Incoming data processing for the background worker.
+        """
+        log.debug(f"{{ class_name }}Orchestrator | Handling payload: {payload}")
+
+        # Background workers usually return None or system results
+        # Here we return a dummy DTO to satisfy the protocol if needed
+        return ViewResultDTO(text="OK")

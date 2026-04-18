@@ -1,24 +1,15 @@
 """
-codex_bot.engine.middlewares — Ready-to-use middleware for Aiogram.
-
-All middleware are "dumb" bridges between aiogram and the DI container.
-No business logic — only infrastructure.
-
-Connection (recommended order):
-    1. UserValidationMiddleware  — checks for user presence
-    2. ThrottlingMiddleware      — rate limiting (atomic SET NX)
-    3. ContainerMiddleware       — DI container injection
+Standard middlewares for codex-bot framework.
 """
 
-from codex_bot.engine.middlewares.container import ContainerMiddleware
-from codex_bot.engine.middlewares.throttling import ThrottlingMiddleware
-from codex_bot.engine.middlewares.user_validation import UserValidationMiddleware
+from .container import ContainerMiddleware
+from .director_middleware import DirectorMiddleware
+from .throttling import ThrottlingMiddleware
+from .user_validation import UserValidationMiddleware
 
 __all__ = [
-    "UserValidationMiddleware",
-    "ThrottlingMiddleware",
     "ContainerMiddleware",
+    "DirectorMiddleware",
+    "ThrottlingMiddleware",
+    "UserValidationMiddleware",
 ]
-
-# FSMContextI18nManager is exported separately — requires aiogram-i18n[optional]
-# from codex_bot.engine.middlewares.i18n import FSMContextI18nManager

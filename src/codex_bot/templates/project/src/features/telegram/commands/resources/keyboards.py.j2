@@ -1,0 +1,40 @@
+# клавиатуры хранять функции создания клавиатур
+from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import InlineKeyboardMarkup
+
+# Accessing other features should be done with project prefix or relative imports
+from {{ project_name }}.features.telegram.bot_menu.resources.callbacks import DashboardCallback
+
+{% if use_i18n %}
+from aiogram_i18n import I18nContext
+{% endif %}
+
+def build_welcome_keyboard(is_admin: bool = False) -> InlineKeyboardMarkup:
+    """
+    Keyboards for the welcome screen.
+    Redirects user to the Dashboard feature.
+    """
+    builder = InlineKeyboardBuilder()
+
+    {% if use_i18n %}
+    i18n = I18nContext.get_current()
+    launch_text = i18n.welcome.btn.launch()
+    admin_text = i18n.welcome.btn.admin()
+    {% else %}
+    launch_text = "🚀 Launch App"
+    admin_text = "🛠 Admin Panel"
+    {% endif %}
+
+    builder.button(
+        text=launch_text,
+        callback_data=DashboardCallback(action="select", target="bot_menu").pack()
+    )
+
+    if is_admin:
+        builder.button(
+            text=admin_text,
+            callback_data=DashboardCallback(action="select", target="dashboard_admin").pack(),
+        )
+
+    builder.adjust(1)
+    return builder.as_markup()

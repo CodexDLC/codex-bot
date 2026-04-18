@@ -1,6 +1,6 @@
 """
-Quality gate for codex_tools library.
-Adapted from the "Lily Project Quality Tool" style.
+Quality gate for codex_bot library.
+Adapted from the "Lily Project Quality Tool" style with robust security auditing.
 """
 
 import argparse
@@ -16,7 +16,7 @@ TESTS_DIR = PROJECT_ROOT / "tests"
 TOOLS_DIR = PROJECT_ROOT / "tools"
 
 # Directories to check for Python tools (Ruff, Mypy)
-PYTHON_DIRS = f"{SRC_DIR} {TOOLS_DIR}"
+PYTHON_DIRS = f"{SRC_DIR} {TOOLS_DIR} {TESTS_DIR}"
 
 
 # ANSI Colors
@@ -46,10 +46,12 @@ def print_error(msg: str) -> None:
 def run_command(command: str, cwd: Path = PROJECT_ROOT, capture_output: bool = False) -> tuple[bool, str]:
     """Runs a system command and returns result."""
     try:
+        # Use subprocess.run with shell=True for flexibility in the interactive tool.
+        # nosec B602 is added to satisfy static analysis as this is an internal dev tool.
         result = subprocess.run(
             command,
             cwd=cwd,
-            shell=True,
+            shell=True,  # nosec B602
             check=False,
             text=True,
             capture_output=capture_output,
@@ -65,16 +67,17 @@ def run_command(command: str, cwd: Path = PROJECT_ROOT, capture_output: bool = F
 def check_linters() -> bool:
     print_step("Running Linters (Ruff & Pre-commit hooks)")
 
+    py = sys.executable
     # --- Auto-fixing and formatting with Ruff ---
     print("Attempting to auto-fix Ruff issues...")
-    fix_success, _ = run_command(f"ruff check {PYTHON_DIRS} --fix")
+    fix_success, _ = run_command(f"{py} -m ruff check {PYTHON_DIRS} --fix")
     if not fix_success:
         print_error("Ruff auto-fix command failed.")
         return False
     print_success("Ruff auto-fix completed.")
 
     print("Attempting to auto-format with Ruff...")
-    format_success, _ = run_command(f"ruff format {PYTHON_DIRS}")
+    format_success, _ = run_command(f"{py} -m ruff format {PYTHON_DIRS}")
     if not format_success:
         print_error("Ruff auto-format command failed.")
         return False
@@ -82,7 +85,7 @@ def check_linters() -> bool:
 
     # --- Verification checks after auto-fixing/formatting ---
     print("Verifying Ruff check (no fixable issues remaining)...")
-    ruff_check_success, ruff_check_out = run_command(f"ruff check {PYTHON_DIRS}", capture_output=True)
+    ruff_check_success, ruff_check_out = run_command(f"{py} -m ruff check {PYTHON_DIRS}", capture_output=True)
     if not ruff_check_success:
         print_error(f"Ruff check failed (unfixable issues or issues after fix):\n{ruff_check_out}")
         return False
@@ -90,7 +93,7 @@ def check_linters() -> bool:
 
     print("Verifying Ruff format (no formatting issues remaining)...")
     ruff_format_check_success, ruff_format_check_out = run_command(
-        f"ruff format {PYTHON_DIRS} --check", capture_output=True
+        f"{py} -m ruff format {PYTHON_DIRS} --check", capture_output=True
     )
     if not ruff_format_check_success:
         print_error(f"Ruff format check failed (files still need formatting):\n{ruff_format_check_out}")
@@ -98,8 +101,6 @@ def check_linters() -> bool:
     print_success("Ruff format check passed.")
 
     print("Running pre-commit hooks...")
-    # These hooks will check all files based on .pre-commit-config.yaml
-    # We run them via 'pre-commit run --all-files' to be thorough
     success, out = run_command("pre-commit run --all-files")
     if not success:
         print_error(f"Pre-commit hooks failed:\n{out}")
@@ -111,9 +112,8 @@ def check_linters() -> bool:
 
 def check_types() -> bool:
     print_step("Checking Types (Mypy)")
-    # Mypy uses .mypy_cache for incremental checks.
-    # It will only re-check files that changed or are affected by changes.
-    success, out = run_command(f"mypy {SRC_DIR}", capture_output=True)
+    py = sys.executable
+    success, out = run_command(f"{py} -m mypy {SRC_DIR}", capture_output=True)
     if not success:
         print_error(f"Mypy check failed:\n{out}")
     else:
@@ -123,7 +123,8 @@ def check_types() -> bool:
 
 def run_tests() -> bool:
     print_step("Running Unit Tests (Pytest)")
-    success, _ = run_command(f"pytest {TESTS_DIR} -v --tb=short")
+    py = sys.executable
+    success, _ = run_command(f"{py} -m pytest {TESTS_DIR} -v --tb=short")
     if success:
         print_success("All tests passed.")
     else:
@@ -135,15 +136,31 @@ def check_security_deep() -> bool:
     """Deep security audit: dependencies + static analysis."""
     print_step("Deep Security Audit")
 
-    print("Checking for vulnerable dependencies (pip-audit)...")
-    success, out = run_command("pip-audit", capture_output=True)
-    if not success:
-        print_error(f"Security vulnerabilities found in packages:\n{out}")
-        return False
+    print("Checking for vulnerable dependencies (pip-audit + uv lock)...")
+    # Use uv to export the current lockfile to a temporary requirements format
+    # and audit that file directly. This avoids environment isolation issues.
+    req_file = PROJECT_ROOT / "temp_requirements_audit.txt"
+    try:
+        # Export dependencies, skipping hashes and the local project to ensure clean audit.
+        export_success, export_out = run_command(
+            f"uv export --all-extras --format requirements-txt --no-hashes --no-emit-project -o {req_file}"
+        )
+        if not export_success:
+            print_error(f"Failed to export requirements for audit: {export_out}")
+            return False
+
+        # Audit the exported requirements file
+        audit_success, audit_out = run_command(f"pip-audit -r {req_file}", capture_output=True)
+        if not audit_success:
+            print_error(f"Security vulnerabilities found in dependencies:\n{audit_out}")
+            return False
+    finally:
+        if req_file.exists():
+            req_file.unlink()
 
     print("Running Bandit (SAST)...")
-    # -r for recursive, -ll to show only medium/high severity
-    success, out = run_command(f"bandit -r {SRC_DIR} -ll", capture_output=True)
+    py = sys.executable
+    success, out = run_command(f"{py} -m bandit -r {SRC_DIR} -ll", capture_output=True)
     if not success:
         print_error(f"Bandit found security risks:\n{out}")
         return False
@@ -158,11 +175,11 @@ def check_security_deep() -> bool:
 def run_all() -> None:
     # Clear screen for fresh output
     if os.name == "nt":
-        os.system("cls")
+        os.system("cls")  # nosec B605
     else:
-        os.system("clear")
+        os.system("clear")  # nosec B605
 
-    print(f"{Colors.HEADER}{Colors.BOLD}=== codex_tools quality gate ==={Colors.ENDC}")
+    print(f"{Colors.HEADER}{Colors.BOLD}=== codex_bot quality gate ==={Colors.ENDC}")
 
     if not check_linters():
         sys.exit(1)
@@ -184,7 +201,7 @@ def run_all() -> None:
 
 def interactive_menu() -> None:
     while True:
-        print(f"\n{Colors.CYAN}{Colors.BOLD}🛠 codex_tools Quality Tool{Colors.ENDC}")
+        print(f"\n{Colors.CYAN}{Colors.BOLD}🛠 codex_bot Quality Tool{Colors.ENDC}")
         print("1. Fast Check (Lint & Pre-commit)")
         print("2. Type Check (Mypy)")
         print("3. Run Unit Tests")
@@ -211,7 +228,7 @@ def interactive_menu() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="codex_tools quality gate")
+    parser = argparse.ArgumentParser(description="codex_bot quality gate")
     parser.add_argument("--all", action="store_true", help="Run all checks")
     parser.add_argument("--lint", action="store_true", help="Run linters only")
     parser.add_argument("--types", action="store_true", help="Run type check only")

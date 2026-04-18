@@ -1,11 +1,19 @@
 """
-codex_bot — Feature-based Aiogram framework library.
+Codex Bot Framework — Feature-oriented high-level Aiogram library.
 
-Reusable infrastructure for Telegram bots with stateless UI management,
-Redis Stream integration, and advanced FSM capabilities.
+Provides a robust infrastructure for scalable Telegram bot development,
+emphasizing stateless UI orchestration, Redis Stream integration, and per-event
+dependency injection. Designed for modular architectures using a 'convention
+over configuration' approach.
 """
 
-__version__ = "0.1.1"
+import importlib.metadata
+
+try:
+    __version__ = importlib.metadata.version("codex-bot")
+except importlib.metadata.PackageNotFoundError:
+    __version__ = "unknown"
+
 __author__ = "Codex Team"
 __license__ = "MIT"
 

@@ -1,11 +1,9 @@
 """
-RouterBuilder — Parametric assembly of the main Aiogram router.
+Router Orchestration — Parametric assembly of the application's update tree.
 
-Replaces hardcoded core/routers.py with explicit parameters
-module_prefix and installed_features.
-
-Fail Fast Principle: if a feature is declared in installed_features and its handlers.py
-contains an error — the startup fails immediately, rather than silently ignoring the problem.
+Provides a centralized mechanism for dynamically collecting and nesting feature
+routers into the main dispatcher. Implements the 'Fail Fast' principle to
+ensure configuration errors are detected immediately during startup.
 """
 
 from __future__ import annotations

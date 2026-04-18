@@ -1,0 +1,27 @@
+from typing import Any
+
+from aiogram.fsm.context import FSMContext
+
+from codex_bot.fsm.state_manager import BaseStateManager
+
+class {{ class_name }}StateManager(BaseStateManager):
+    """
+    Isolated FSM State Manager for the {{ class_name }} feature.
+    All data is stored under the 'draft:{{ feature_key }}' key.
+
+    Add your typed methods here for cleaner business logic.
+    """
+
+    def __init__(self, state: FSMContext):
+        super().__init__(state, feature_key="{{ feature_key }}")
+
+    async def get_current_data(self) -> dict[str, Any]:
+        """Returns all data of the current feature draft."""
+        return await self.get_payload()
+
+    # --- Examples of custom typed methods ---
+    # async def save_step(self, step_name: str):
+    #     await self.update(step=step_name)
+    #
+    # async def get_step(self) -> Optional[str]:
+    #     return await self.get_value("step")

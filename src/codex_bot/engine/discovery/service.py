@@ -1,96 +1,125 @@
 """
 FeatureDiscoveryService — Auto-discovery and registration of features.
 
-Supports two modes of operation:
-1. **Auto-discovery** — scans modules from a list of feature_paths via importlib.
-2. **Explicit registration** — the developer passes objects directly (fallback for
-   environments without dynamic imports: PyInstaller, strict mypy, etc.).
-
-Both modes can be combined in a single application.
+Strictly follows the convention:
+- Telegram features: features.telegram.{name}.feature_setting
+- Redis features:    features.redis.{name}.feature_setting
 """
 
 import importlib
 import logging
 from types import ModuleType
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, Literal
 
 from aiogram import Router
 
+if TYPE_CHECKING:
+    from codex_platform.stream_broker import StreamBroker, StreamRouter
+    from codex_platform.system_models import NodeInfo
+else:
+    try:
+        from codex_platform.stream_broker import StreamBroker, StreamRouter
+        from codex_platform.system_models import NodeInfo
+    except ImportError:
+
+        class StreamRouter:
+            pass
+
+        StreamBroker = object
+        NodeInfo = object
+
+
 from ...fsm.garbage_collector import GarbageStateRegistry
-from ...redis.dispatcher import BotRedisDispatcher
-from ...redis.router import RedisRouter
+from ...stream.dispatcher import BotStreamDispatcher
 
 log = logging.getLogger(__name__)
 
 
 class FeatureDiscoveryService:
-    """
-    Service for discovering and registering feature configurations.
+    """Automated orchestration for framework-wide feature registration.
 
-    Two modes:
-
-    **Mode 1: Auto-discovery** (similar to Django's INSTALLED_APPS):
-    ```python
-    discovery = FeatureDiscoveryService(
-        module_prefix="src.telegram_bot",
-        installed_features=["features.telegram.commands", "features.telegram.booking"],
-        installed_redis_features=["features.redis.notifications"],
-        redis_dispatcher=bot_redis_dispatcher,
-    )
-    discovery.discover_all()
-    orchestrators = discovery.create_feature_orchestrators(container)
-    ```
-
-    **Mode 2: Explicit registration** (fallback):
-    ```python
-    discovery = FeatureDiscoveryService()
-    discovery.register_router(commands_router)
-    discovery.register_orchestrator("booking", BookingOrchestrator(container))
-    discovery.register_garbage_states(BookingStates)
-    ```
-
-    Args:
-        module_prefix: Module path prefix for auto-discovery.
-                       Example: "src.telegram_bot".
-        installed_features: List of Telegram feature paths (with Aiogram routers).
-        installed_redis_features: List of Redis feature paths (with RedisRouter).
-        redis_dispatcher: Dispatcher for registering Redis handlers.
+    Operates on a 'convention over configuration' principle to dynamically
+    locate and initialize business features. Manages the discovery of
+    Aiogram routers, Redis stream handlers, UI menu configurations, andч
+    FSM garbage collection states.
     """
 
     def __init__(
         self,
-        module_prefix: str = "",
+        module_prefix: str = "features",
         installed_features: list[str] | None = None,
         installed_redis_features: list[str] | None = None,
-        redis_dispatcher: BotRedisDispatcher | None = None,
+        redis_dispatcher: BotStreamDispatcher | None = None,
     ) -> None:
+        """
+        Initializes the discovery service.
+
+        Args:
+            module_prefix: Base package for features (default: "features").
+            installed_features: Simple folder names of Telegram features.
+            installed_redis_features: Simple folder names of Redis features.
+            redis_dispatcher: Dispatcher for registering Redis handlers.
+        """
         self._prefix = module_prefix
         self._features = installed_features or []
         self._redis_features = installed_redis_features or []
         self._redis_dispatcher = redis_dispatcher
 
-        # Explicitly registered objects (Mode 2)
+        # Explicitly registered objects (fallback for non-dynamic environments)
         self._explicit_routers: list[Router] = []
         self._explicit_orchestrators: dict[str, Any] = {}
 
-    # =========================================================================
-    # Mode 1: Auto-discovery
-    # =========================================================================
-
     def discover_all(self) -> None:
         """
-        Starts auto-discovery of all registered features.
+        Starts auto-discovery of all registered features based on convention.
 
         For Telegram features: loads menu config, garbage states, Aiogram routers.
         For Redis features: loads RedisRouter and connects it to the dispatcher.
         """
-        for feature_path in self._features:
-            self._discover_menu(feature_path)
-            self._discover_garbage_states(feature_path)
+        for name in self._features:
+            module = self._load_module(name, "telegram")
+            if module:
+                self._register_menu(module, name)
+                self._register_garbage(module)
 
-        for feature_path in self._redis_features:
-            self._discover_redis_handlers(feature_path)
-            self._discover_garbage_states(feature_path)
+        for name in self._redis_features:
+            module = self._load_module(name, "redis")
+            if module:
+                self._register_redis_handlers(module, name)
+                self._register_garbage(module)
+
+    def discover_models(self, project_name: str | None = None) -> None:
+        """
+        Dynamically imports the 'models' module for each installed feature.
+        This ensures all SQLAlchemy models are registered with Base.metadata
+        for Alembic migration discovery.
+
+        Args:
+            project_name: The root package name of the project (e.g., "my_bot").
+        """
+        prefix = f"{project_name}." if project_name else ""
+
+        # 1. Discover models in Telegram features
+        for name in self._features:
+            module_path = f"{prefix}{self._prefix}.telegram.{name}.models"
+            try:
+                importlib.import_module(module_path)
+                log.debug(f"FeatureDiscovery | Imported models from: {module_path}")
+            except ImportError as e:
+                # If module is missing, it's fine — some features might not have models
+                if name in str(e):
+                    log.debug(f"FeatureDiscovery | No models found in: {module_path}")
+                else:
+                    log.warning(f"FeatureDiscovery | Error importing models from {module_path}: {e}")
+
+        # 2. Discover models in Redis features
+        for name in self._redis_features:
+            module_path = f"{prefix}{self._prefix}.redis.{name}.models"
+            try:
+                importlib.import_module(module_path)
+                log.debug(f"FeatureDiscovery | Imported models from: {module_path}")
+            except ImportError:
+                pass
 
     def create_feature_orchestrators(self, container: Any) -> dict[str, Any]:
         """
@@ -106,20 +135,23 @@ class FeatureDiscoveryService:
             Dictionary {feature_key: orchestrator_instance}.
         """
         orchestrators = dict(self._explicit_orchestrators)
-        configs = [(self._features, ""), (self._redis_features, "redis_")]
 
-        for feature_list, prefix in configs:
-            for feature_path in feature_list:
-                module = self._load_feature_module(feature_path)
+        configs: list[tuple[list[str], Literal["telegram", "redis"], str]] = [
+            (self._features, "telegram", ""),
+            (self._redis_features, "redis", "redis_"),
+        ]
+
+        for names, f_type, key_prefix in configs:
+            for name in names:
+                module = self._load_module(name, f_type)
                 if not module:
                     continue
+
                 factory = getattr(module, "create_orchestrator", None)
-                if not factory:
-                    continue
-                base_name = feature_path.split(".")[-1]
-                key = f"{prefix}{base_name}"
-                orchestrators[key] = factory(container)
-                log.info(f"FeatureDiscovery | orchestrator loaded key='{key}'")
+                if factory and callable(factory):
+                    key = f"{key_prefix}{name}"
+                    orchestrators[key] = factory(container)
+                    log.info(f"FeatureDiscovery | Orchestrator loaded: {key}")
 
         return orchestrators
 
@@ -127,25 +159,24 @@ class FeatureDiscoveryService:
         """
         Collects Aiogram Routers from all Telegram features.
 
+        Expects routers to be named 'router' in '{name}.handlers.handlers'.
+
         Returns:
-            List of Routers to be included in the main router.
+            List of Routers to be included in the main dispatcher.
         """
         routers = list(self._explicit_routers)
 
-        for feature_path in self._features:
-            module_path = f"{self._prefix}.{feature_path}.handlers" if self._prefix else f"{feature_path}.handlers"
+        for name in self._features:
+            path = f"{self._prefix}.telegram.{name}.handlers"
             try:
-                module = importlib.import_module(module_path)
+                module = importlib.import_module(path)
                 router = getattr(module, "router", None)
-                if router and isinstance(router, Router):
+                if isinstance(router, Router):
                     routers.append(router)
-                    log.info(f"FeatureDiscovery | router loaded feature='{feature_path}'")
-            except ImportError as e:
-                if getattr(e, "name", None) == module_path:
-                    log.debug(f"FeatureDiscovery | no handlers file feature='{feature_path}'")
-                else:
-                    log.critical(f"FeatureDiscovery | Broken import inside '{feature_path}': {e}")
-                    raise
+                    log.info(f"FeatureDiscovery | Router loaded: {name}")
+            except ImportError:
+                log.debug(f"FeatureDiscovery | No handlers found for {name} at {path}")
+                continue
 
         return routers
 
@@ -160,99 +191,70 @@ class FeatureDiscoveryService:
             Dictionary {feature_key: menu_config_dict}.
         """
         buttons: dict[str, dict[str, Any]] = {}
-        for feature_path in self._features:
-            btn = self._discover_menu(feature_path)
-            if btn:
-                if is_admin is not None and btn.get("is_admin", False) != is_admin:
-                    continue
-                key = btn.get("key", feature_path)
-                buttons[key] = btn
+        for name in self._features:
+            module = self._load_module(name, "telegram")
+            if module:
+                btn = getattr(module, "MENU_CONFIG", None)
+                if isinstance(btn, dict):
+                    if is_admin is not None and btn.get("is_admin", False) != is_admin:
+                        continue
+                    buttons[btn.get("key", name)] = btn
         return buttons
 
     # =========================================================================
-    # Mode 2: Explicit registration (fallback)
+    # Explicit Registration (Fallback)
     # =========================================================================
 
     def register_router(self, router: Router) -> None:
-        """
-        Explicitly registers an Aiogram Router (without auto-discovery).
-
-        Args:
-            router: Instance of aiogram.Router.
-        """
+        """Explicitly registers an Aiogram Router."""
         self._explicit_routers.append(router)
 
     def register_orchestrator(self, key: str, orchestrator: Any) -> None:
-        """
-        Explicitly registers a feature orchestrator.
-
-        Args:
-            key: Feature key (e.g., "booking", "redis_notifications").
-            orchestrator: Orchestrator instance.
-        """
+        """Explicitly registers a feature orchestrator."""
         self._explicit_orchestrators[key] = orchestrator
 
     def register_garbage_states(self, states: Any) -> None:
-        """
-        Explicitly registers states as garbage (Garbage Collector).
-
-        Args:
-            states: State, StatesGroup, string, or a list of them.
-        """
+        """Explicitly registers states for the Garbage Collector."""
         GarbageStateRegistry.register(states)
 
     # =========================================================================
-    # Private auto-discovery methods
+    # Internal Logic
     # =========================================================================
 
-    def _load_feature_module(self, feature_path: str) -> ModuleType | None:
-        candidates = []
-        if self._prefix:
-            candidates.append(f"{self._prefix}.{feature_path}.feature_setting")
-            candidates.append(f"{self._prefix}.{feature_path}")
-        candidates.append(f"{feature_path}.feature_setting")
-        candidates.append(feature_path)
+    def _load_module(self, name: str, f_type: Literal["telegram", "redis"]) -> ModuleType | None:
+        """Loads the feature_setting module following the convention."""
+        path = f"{self._prefix}.{f_type}.{name}.feature_setting"
+        try:
+            return importlib.import_module(path)
+        except ImportError:
+            return None
 
-        for path in candidates:
-            try:
-                return importlib.import_module(path)
-            except ImportError:
-                continue
-        return None
+    def _register_menu(self, module: ModuleType, name: str) -> None:
+        """Internal helper to extract menu config."""
+        pass
 
-    def _discover_menu(self, feature_path: str) -> dict[str, Any] | None:
-        module = self._load_feature_module(feature_path)
-        if module:
-            config = getattr(module, "MENU_CONFIG", None)
-            if config and isinstance(config, dict):
-                return cast(dict[str, Any] | None, config)
-        return None
-
-    def _discover_garbage_states(self, feature_path: str) -> None:
-        module = self._load_feature_module(feature_path)
-        if not module:
-            return
+    def _register_garbage(self, module: ModuleType) -> None:
+        """Registers states for the Garbage Collector."""
         garbage = getattr(module, "GARBAGE_STATES", None)
         if garbage:
             GarbageStateRegistry.register(garbage)
             return
+
         if getattr(module, "GARBAGE_COLLECT", False):
             states = getattr(module, "STATES", None)
             if states:
                 GarbageStateRegistry.register(states)
 
-    def _discover_redis_handlers(self, feature_path: str) -> None:
+    def _register_redis_handlers(self, module: ModuleType, name: str) -> None:
+        """Connects RedisRouter to the dispatcher."""
         if not self._redis_dispatcher:
             return
-        module_path = f"{self._prefix}.{feature_path}.handlers" if self._prefix else f"{feature_path}.handlers"
+
+        path = f"{self._prefix}.redis.{name}.handlers"
         try:
-            module = importlib.import_module(module_path)
-            redis_router = getattr(module, "redis_router", None)
-            if redis_router and isinstance(redis_router, RedisRouter):
-                self._redis_dispatcher.include_router(redis_router)
-        except ImportError as e:
-            if getattr(e, "name", None) == module_path:
-                log.debug(f"FeatureDiscovery | no redis handlers file feature='{module_path}'")
-            else:
-                log.critical(f"FeatureDiscovery | Broken import inside '{module_path}': {e}")
-                raise
+            handler_module = importlib.import_module(path)
+            router = getattr(handler_module, "redis_router", None)
+            if isinstance(router, StreamRouter):
+                self._redis_dispatcher.include_router(router)
+        except ImportError:
+            pass

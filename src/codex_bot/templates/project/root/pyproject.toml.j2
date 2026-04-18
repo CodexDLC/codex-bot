@@ -1,0 +1,85 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "{{ project_name }}"
+version = "0.1.0"
+description = "Telegram Bot generated via codex-bot"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiogram>=3.4",
+    "pydantic-settings>=2.0",
+    "codex-bot",
+    {% if use_loguru %}
+    "loguru>=0.7.0",
+    {% endif %}
+    {% if use_i18n %}
+    "aiogram-i18n>=1.4",
+    {% endif %}
+    {% if use_redis %}
+    "redis[asyncio]>=5.0",
+    {% endif %}
+    {% if data_mode == 'direct' %}
+    "sqlalchemy>=2.0",
+    "alembic>=1.18.0",
+    "aiosqlite>=0.19.0",
+    {% endif %}
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+run-bot = "{{ project_name }}.launcher:run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/{{ project_name }}"]
+
+{% if is_dev %}
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "aiogram.*",
+    "pydantic.*",
+    "pydantic_settings.*",
+    "codex_bot.*",
+    "codex_platform.*",
+    {% if use_redis %}
+    "redis.*",
+    {% endif %}
+    {% if data_mode == 'direct' %}
+    "sqlalchemy.*",
+    "alembic.*",
+    {% endif %}
+]
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM"]
+ignore = ["B008"]
+{% else %}
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+check_untyped_defs = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+{% endif %}

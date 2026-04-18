@@ -1,32 +1,35 @@
 """
-Protocols for Director — Dependency inversion without concrete classes.
+Protocols for the Director — Interface definitions for dependency inversion.
 
-OrchestratorProtocol describes the minimum contract of a stateless orchestrator,
-ContainerProtocol — the minimum contract of the project's DI container.
-The library does not know about specific implementations — only about interfaces.
+This module defines the structural protocols required for the Director to
+interact with features and the DI container without being coupled to
+specific implementations.
 """
 
+from collections.abc import Sequence
 from typing import Any, NamedTuple, Protocol, runtime_checkable
 
 from aiogram.fsm.state import State
 
+from codex_bot.base.view_dto import UnifiedViewDTO
+
+"""TypeVar for the orchestrator payload. A specific subclass specifies the type explicitly."""
+
 
 class SceneConfig(NamedTuple):
-    """Scene configuration: FSM state + entry-point service key.
+    """Configuration schema for feature entry points.
 
-    Used in the project's SCENE_ROUTES to describe cross-feature transitions.
+    Defines the mapping between a logical feature key and its associated
+    Telegram FSM state. Used to drive the orchestration logic in the Director.
 
     Attributes:
-        fsm_state: Aiogram State set when entering the scene.
-        entry_service: Orchestrator key in the container registry (e.g., ``"booking"``).
+        fsm_state: The `aiogram` State object to activate upon entry.
+        entry_service: The lookup key for the orchestrator in the DI registry.
 
     Example:
         ```python
         SCENE_ROUTES = {
-            "booking": SceneConfig(
-                fsm_state=BookingStates.main,
-                entry_service="booking",
-            ),
+            "main": SceneConfig(fsm_state=Menu.main, entry_service="main_menu")
         }
         ```
     """
@@ -36,17 +39,40 @@ class SceneConfig(NamedTuple):
 
 
 @runtime_checkable
-class OrchestratorProtocol(Protocol):
-    """Minimum contract for a stateless feature orchestrator.
+class BaseTransitionGuard(Protocol):
+    """Protocol for transition guards.
 
-    The Director works through this protocol without knowing about specific classes.
-    BaseBotOrchestrator implements it automatically.
-
-    The orchestrator must be stateless — it does not store user state.
-    Context is passed via the ``director`` argument on each call.
+    Guards are used to intercept transitions between features. They can
+    be used for RBAC, rate limiting, or any other logic that should block
+    a transition.
     """
 
-    async def render(self, payload: Any, director: Any) -> Any:
+    async def check_access(
+        self,
+        director: Any,
+        feature: str,
+        orchestrator: Any,
+        payload: Any,
+    ) -> bool | UnifiedViewDTO:
+        """Checks if the transition is allowed.
+
+        Returns:
+            True if the transition is allowed, or a `UnifiedViewDTO`
+            to block the transition and return the DTO to the user.
+        """
+        ...
+
+
+@runtime_checkable
+class OrchestratorProtocol(Protocol):
+    """Structural protocol for stateless feature orchestrators.
+
+    Orchestrators complying with this protocol must be stateless singletons.
+    They are responsible for transforming incoming payloads into UI responses
+    using the provided `Director` context.
+    """
+
+    async def render(self, director: Any, payload: Any = None) -> Any:
         """Renders content for the passed payload."""
         ...
 
@@ -78,3 +104,8 @@ class ContainerProtocol(Protocol):
     """
 
     features: dict[str, OrchestratorProtocol]
+
+    @property
+    def transition_guards(self) -> Sequence[BaseTransitionGuard]:
+        """Sequence of guards to run before any feature transition."""
+        ...

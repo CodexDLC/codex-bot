@@ -1,7 +1,9 @@
 """
-UIAnimationService — Waiting animation service for Telegram UI.
+UIAnimationService — Asynchronous animation engine for Telegram UI components.
 
-Three main scenarios: delayed fetch, polling loop, timed polling.
+Provides advanced mechanisms for displaying progress indicators and loading
+states. Supports multiple synchronization patterns, including delayed
+fetching and state-driven polling loops.
 """
 
 import asyncio
@@ -34,31 +36,22 @@ PollerFunc = Callable[[], Awaitable[tuple[UnifiedViewDTO, bool]]]
 
 
 class UIAnimationService:
-    """Service for waiting animation (Polling).
+    """Service for orchestrating asynchronous UI animations during long-running tasks.
 
-    Three main scenarios:
+    This service facilitates a responsive user experience by providing visual
+    feedback (progress bars, infinite spinners) while the bot performs
+    background operations or waits for state changes.
 
-    - `run_delayed_fetch` — animation for N seconds → one request at the end.
-    - `run_polling_loop` — request loop until an event occurs.
-    - `run_timed_polling` — immediate request → animation based on duration.
+    Supported Scenarios:
+        - **Delayed Fetch**: Displays an animation for a fixed duration before
+          executing a single request. Best for "scanning" or "searching" effects.
+        - **Polling Loop**: Executes repeated checks until a terminal state is
+          reached or a timeout occurs. Ideal for combat or matchmaking.
+        - **Timed Polling**: Combines immediate result checking with
+          time-bound progress bars.
 
     Args:
-        sender: ViewSender instance for sending intermediate frames.
-
-    Example:
-        ```python
-        animation = UIAnimationService(sender=container.view_sender)
-
-        async def fetch_result() -> tuple[UnifiedViewDTO, bool]:
-            data = await api.get_status(user_id)
-            return build_view(data), data.is_pending
-
-        await animation.run_polling_loop(
-            check_func=fetch_result,
-            timeout=60.0,
-            loading_text="⏳ <b>Waiting...</b>",
-        )
-        ```
+        sender: Instance of `ViewSender` used to deliver visual updates.
     """
 
     def __init__(self, sender: "ViewSender") -> None:
@@ -76,16 +69,20 @@ class UIAnimationService:
         loading_text: str = "🔍 <b>Searching...</b>",
         animation_type: AnimationType = AnimationType.PROGRESS_BAR,
     ) -> None:
-        """Animation for N seconds → one request at the end.
+        """Display a fixed-duration animation followed by a single data fetch.
 
-        Used for: Search, Scan — show animation, then make one request to the backend.
+        Typically used to simulate complex processing (e.g., scanning or
+        searching) to manage user expectations.
 
         Args:
-            fetch_func: Function to retrieve data (called once at the end).
-            delay: Total animation duration in seconds.
-            step_interval: Interval between animation frames.
-            loading_text: Text to display during animation.
-            animation_type: Animation type (PROGRESS_BAR or INFINITE).
+            fetch_func: An awaitable that retrieves the final `UnifiedViewDTO`.
+            delay: Total duration of the animation sequence in seconds.
+            step_interval: Time between frame updates in seconds.
+            loading_text: The prompt to display alongside the animation.
+            animation_type: The visual style of the indicator.
+
+        Side Effects:
+            - Delivers multiple intermediate `UnifiedViewDTO` frames to the UI.
         """
         steps = max(1, int(delay / step_interval))
 

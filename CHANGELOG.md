@@ -30,9 +30,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Enhanced State Management**: Improved `StateManager` and `FSM` handlers for more robust session control.
 - **Redis Dispatcher Optimization**: Fine-tuned stream processing and error handling in `RedisDispatcher`.
 - **Test Coverage**: Added comprehensive unit tests for all core modules.
-
-### Changed
-- Refactored production code into a modular library structure.
-- Standardized DTOs and protocols for better extensibility.
-- Optimized Redis Stream processing for high-load scenarios.
-- Improved type safety across the entire codebase (Mypy strict mode).

@@ -1,0 +1,21 @@
+"""
+Base Repository for '{{ project_name | default('CodexBot') }}'.
+Inherits common CRUD logic from the codex-bot library.
+"""
+
+from typing import TypeVar
+
+from codex_bot.engine.database.repository import BaseRepository as CoreBaseRepository
+
+from ..models.base import ProjectBase
+
+# Generic type for SQLAlchemy models
+ModelType = TypeVar("ModelType", bound=ProjectBase)
+
+
+class BaseRepository(CoreBaseRepository[ModelType]):
+    """
+    Project-wide base repository.
+    Can be extended with shared logic for all project repositories.
+    """
+    pass

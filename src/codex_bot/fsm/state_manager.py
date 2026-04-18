@@ -1,42 +1,37 @@
 """
-BaseStateManager — Isolated feature data storage within FSM.
+StateHelper — Atomic abstraction layer for FSM data manipulation.
 
-Each feature works with its own namespaced key in the FSM storage,
-eliminating conflicts between features of the same bot.
+Provides safe, consistent access to FSM storage for both high-level managers
+and low-level infrastructure. Implements aggressive cleanup of empty
+structures to optimize backend performance (anti-zombie pattern).
 """
 
-from typing import Any, TypeVar
+from typing import Any
 
 from aiogram.fsm.context import FSMContext
 
 from .state_helper import StateHelper
 
-T = TypeVar("T")
-
 
 class BaseStateManager:
-    """
-    Base FSM state manager for a feature (draft).
+    """Manages namespaced state persistence for individual bot features.
 
-    Isolates specific feature data under the `draft:<feature_key>` key
-    within the user's general FSM storage. This prevents collisions
-    between different features operating in the same FSM session.
+    Each feature is allocated a dedicated sub-key (namespace) within the
+    underlying FSM storage (e.g., Redis). This abstraction facilitates
+    independent data management and prevents cross-feature state corruption.
 
-    Args:
-        state: FSM context of the current user.
-        feature_key: Unique feature key (e.g., `"booking"`, `"profile"`).
-
-    Example:
-        ```python
-        manager = BaseStateManager(state, feature_key="booking")
-        await manager.update(date="2024-01-15", time="14:00")
-        payload = await manager.get_payload()
-        # {"date": "2024-01-15", "time": "14:00"}
-        await manager.clear()
-        ```
+    Attributes:
+        state: The raw `FSMContext` instance for the current session.
+        storage_key: The resolved namespaced key used for persistent storage.
     """
 
     def __init__(self, state: FSMContext, feature_key: str) -> None:
+        """Initializes the BaseStateManager.
+
+        Args:
+            state: Instance of `FSMContext` from the active handler.
+            feature_key: Unique identifier for the feature (e.g., "market", "quest").
+        """
         self.state = state
         self.storage_key = f"draft:{feature_key}"
 

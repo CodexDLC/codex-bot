@@ -1,71 +1,72 @@
-# Codex Bot Framework
+# codex-bot
 
 [![PyPI version](https://img.shields.io/pypi/v/codex-bot.svg)](https://pypi.org/project/codex-bot/)
 [![Python versions](https://img.shields.io/pypi/pyversions/codex-bot.svg)](https://pypi.org/project/codex-bot/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-**Codex Bot** is a professional, feature-based framework built on top of [Aiogram 3.x](https://github.com/aiogram/aiogram). It provides a reusable, production-ready infrastructure for building complex, scalable Telegram bots with a focus on stateless UI management and high-load Redis integration.
-
----
-
-## 🚀 Key Features
-
-- **Feature-based Architecture**: Organize your bot into independent, reusable features.
-- **Stateless Orchestrators**: Manage UI logic without storing state in memory, making your bot horizontally scalable.
-- **Redis Stream Integration**: Native support for high-load event processing with Consumer Groups.
-- **Advanced FSM**: Automatic UI cleanup with `GarbageStateRegistry` and structured state management.
-- **Unified View System**: Consistent message rendering across different platforms using DTOs.
-- **Fluent-based I18n**: Powerful localization engine with project-level isolation and automatic compilation.
-- **CLI Scaffolding**: Rapidly generate new features with pre-defined templates.
+**codex-bot** is a feature-based framework built on top of [Aiogram 3.x](https://github.com/aiogram/aiogram), providing professional-grade infrastructure for building complex Telegram bot ecosystems.
 
 ---
 
-## 📦 Installation
+## Install
 
-Install the core library:
 ```bash
+# Core framework only
 pip install codex-bot
+
+# Include Redis Stream integration
+pip install "codex-bot[redis]"
 ```
 
-Install with optional dependencies:
-```bash
-pip install "codex-bot[redis,i18n,http]"
-```
-
----
-
-## 🛠 Quick Start
+## Quick Start
 
 ```python
-from codex_bot import BotBuilder, BaseBotOrchestrator, Director
-from codex_bot.base.view_dto import ViewResultDTO
+import asyncio
+from codex_bot.director import Director
+from codex_bot.engine.discovery.service import FeatureDiscoveryService
 
-# 1. Define your feature orchestrator
-class MyFeatureOrchestrator(BaseBotOrchestrator[None]):
-    async def render_content(self, payload: None, director: Director) -> ViewResultDTO:
-        return ViewResultDTO(text="Hello from Codex Bot!")
+async def main():
+    # Auto-discovery of business features
+    discovery = FeatureDiscoveryService(
+        installed_features=["profile", "settings"]
+    )
+    discovery.discover_all()
 
-# 2. Build and run your bot
-builder = BotBuilder(token="YOUR_TELEGRAM_TOKEN")
-builder.register_orchestrator("main", MyFeatureOrchestrator())
-builder.run_polling()
+    # Unified orchestration
+    print("Codex-Bot ready for action!")
+
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
+## Modules
+
+| Module | Extra | Description |
+| :--- | :--- | :--- |
+| `base` | - | Immutable DTOs and base orchestrator classes |
+| `director` | - | Smart navigation and context management |
+| `engine` | - | Convention-based feature discovery service |
+| `stream` | `[redis]` | Redis Streams integration for async event handling |
+| `fsm` | - | Namespaced FSM with automated garbage collection |
+
+## Documentation
+
+Full documentation with architecture diagrams, API reference, and guides:
+
+**[https://codexdlc.github.io/codex-bot/](https://codexdlc.github.io/codex-bot/)**
+
+## Part of the Codex ecosystem
+
+| Library | Description |
+| :--- | :--- |
+| [codex-core](https://github.com/codexdlc/codex-core) | Shared DTOs, logging, and security |
+| [codex-platform](https://github.com/codexdlc/codex-platform) | Infrastructure: Redis, Workers, Notifications |
+| [codex-ai](https://github.com/codexdlc/codex-ai) | Agnostic LLM abstraction layer |
+| [codex-services](https://github.com/codexdlc/codex-services) | Domain engines: Booking, Payments, CRM |
+
+Each library is fully standalone — install only what your project needs. Together they form the backbone of **codex-bot** (aiogram) and **codex-django** (Django integration layer).
+
 ---
 
-## 📚 Documentation
-
-- [English Documentation](https://codexdlc.github.io/codex-bot/en_EN/)
-- [Русская документация](https://codexdlc.github.io/codex-bot/ru_RU/)
-- [**Changelog**](CHANGELOG.md) — see what's new in the latest versions.
-
----
-
-## 📄 License
-
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
-
----
-
-### 🇷🇺 Краткое описание (RU)
-**Codex Bot** — это профессиональный фреймворк для создания Telegram-ботов на базе Aiogram 3.x. Он предоставляет готовую инфраструктуру для разработки сложных и масштабируемых систем, используя архитектуру на основе "фич", stateless-оркестраторы и глубокую интеграцию с Redis Streams.
+## License
+This project is licensed under the **Apache License 2.0**. Developed by **Codex Team**.

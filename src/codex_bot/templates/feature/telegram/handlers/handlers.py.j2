@@ -1,0 +1,38 @@
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from aiogram import Router, types
+from aiogram.filters import Command
+from aiogram_i18n import I18nContext
+from codex_bot.director import Director
+
+from ..feature_setting import {{ class_name }}States
+from ..logic.orchestrator import {{ class_name }}Orchestrator
+
+{% if use_loguru %}
+from loguru import logger as log
+{% else %}
+log = logging.getLogger(__name__)
+{% endif %}
+
+router = Router(name="{{ feature_name }}_router")
+
+
+@router.message(Command("{{ feature_name }}"))
+@router.message({{ class_name }}States.main)
+async def handle_{{ feature_name }}_entry(
+    message: types.Message,
+    director: Director,
+    orchestrator: {{ class_name }}Orchestrator,
+    i18n: I18nContext,
+) -> Any:
+    """
+    Main entry handler for the {{ class_name }} feature.
+    """
+    log.debug(f"{{ class_name }} | Command Handler | user_id={message.from_user.id if message.from_user else 'unknown'}")
+
+    # Example of calling the orchestrator for rendering
+    view = await orchestrator.handle_entry(director=director)
+    return await view.send(message, i18n=i18n)

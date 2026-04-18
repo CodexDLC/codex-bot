@@ -1,0 +1,46 @@
+from typing import Any
+from codex_bot.base.base_orchestrator import BaseBotOrchestrator
+from codex_bot.base.view_dto import UnifiedViewDTO
+from codex_bot.director.director import Director
+
+from .ui.menu_ui import BotMenuUI
+
+class BotMenuOrchestrator(BaseBotOrchestrator):
+    """
+    Universal Dashboard Orchestrator.
+    Manages navigation between features.
+    """
+    def __init__(self, discovery_provider: Any, settings: Any):
+        super().__init__(expected_state=None)
+        self.discovery = discovery_provider
+        self.settings = settings
+        self.ui = BotMenuUI()
+
+    async def render_content(
+        self,
+        director: Director | None = None,
+        payload: Any = None
+    ) -> UnifiedViewDTO:
+        """Renders the dashboard view."""
+        mode = payload if isinstance(payload, str) else "bot_menu"
+        # Logic for fetching available features from discovery
+        available_features = self.discovery.get_menu_buttons(is_admin=(mode == "admin"))
+
+        menu_view = self.ui.render_dashboard(available_features, mode=mode)
+
+        return UnifiedViewDTO(
+            menu=menu_view,
+            chat_id=director.chat_id if director else None,
+            session_key=director.user_id if director else None
+        )
+
+    async def handle_entry(self, director: Director, payload: Any = None) -> UnifiedViewDTO:
+        """Entry point for the menu."""
+        return await self.render(director=director, payload=payload)
+
+    async def handle_callback(self, director: Director, ctx: Any) -> UnifiedViewDTO | None:
+        """Handles menu navigation clicks."""
+        if ctx.action == "select":
+            # Logic for switching scenes via Director
+            return await director.set_scene(feature=ctx.target)
+        return None

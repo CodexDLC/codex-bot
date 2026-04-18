@@ -31,6 +31,7 @@ theme:
 
 plugins:
   - search
+  - include-markdown
   - mkdocstrings:
       handlers:
         python:
@@ -46,22 +47,71 @@ plugins:
 
 nav:
   - Home: README.md
-  - Getting Started: guide/getting_started.md
+  - Guide (EN):
+      - Overview: en_EN/README.md
+      - Getting Started: en_EN/guide/getting_started.md
+      - Architecture: en_EN/architecture/README.md
+      - Roadmap: en_EN/roadmap.md
+      - CLI Engine: en_EN/architecture/cli/README.md
+      - Engine Infrastructure:
+          - Overview: en_EN/architecture/engine/README.md
+          - Discovery: en_EN/architecture/engine/discovery.md
+          - BotBuilder (Factory): en_EN/architecture/engine/factory.md
+          - Container (DI): en_EN/architecture/engine/container.md
+          - Middlewares: en_EN/architecture/engine/middlewares.md
+          - Localization (I18n): en_EN/architecture/engine/i18n.md
+          - HTTP & Databases: en_EN/architecture/engine/http_db.md
+      - Services:
+          - Base Components: en_EN/architecture/services/base/README.md
+          - Director: en_EN/architecture/services/director/README.md
+          - FSM & States: en_EN/architecture/services/fsm/README.md
+          - ViewSender (UI): en_EN/architecture/services/view_sender/README.md
+          - Redis Streams: en_EN/architecture/services/redis/README.md
+          - Animation: en_EN/architecture/services/animation/README.md
+          - Helpers & Utils:
+              - Overview: en_EN/architecture/services/helper/README.md
+              - URL Signer (TWA): en_EN/architecture/services/helper/url_signer.md
+  - Руководство (RU):
+      - Обзор: ru_RU/README.md
+      - Начало работы: ru_RU/guide/getting_started.md
+      - Обзор архитектуры: ru_RU/architecture/README.md
+      - Роадмап: ru_RU/roadmap.md
+      - Движок CLI: ru_RU/architecture/cli/README.md
+      - Движок (Engine):
+          - Обзор: ru_RU/architecture/engine/README.md
+          - Discovery: ru_RU/architecture/engine/discovery.md
+          - BotBuilder (Factory): ru_RU/architecture/engine/factory.md
+          - Container (DI): ru_RU/architecture/engine/container.md
+          - Middlewares: ru_RU/architecture/engine/middlewares.md
+          - Локализация (I18n): ru_RU/architecture/engine/i18n.md
+          - HTTP и Базы данных: ru_RU/architecture/engine/http_db.md
+      - Сервисы (Services):
+          - Базовые компоненты: ru_RU/architecture/services/base/README.md
+          - Director: ru_RU/architecture/services/director/README.md
+          - FSM и Состояния: ru_RU/architecture/services/fsm/README.md
+          - ViewSender (UI): ru_RU/architecture/services/view_sender/README.md
+          - Redis Streams: ru_RU/architecture/services/redis/README.md
+          - Анимация: ru_RU/architecture/services/animation/README.md
+          - Хелперы и Утилиты:
+              - Обзор: ru_RU/architecture/services/helper/README.md
+              - URL Signer (TWA): ru_RU/architecture/services/helper/url_signer.md
   - API Reference:
       - Overview: api/README.md
-      - Public API:
+      - Core API (Essential):
           - base: api/base.md
-          - fsm: api/fsm.md
           - director: api/director.md
           - sender: api/sender.md
+          - fsm: api/fsm.md
+      - Extensions (Optional):
           - redis: api/redis.md
           - animation: api/animation.md
           - helper: api/helper.md
           - url_signer: api/url_signer.md
       - Engine (Infrastructure):
-          - middlewares: api/middlewares.md
-          - discovery: api/discovery.md
           - factory: api/factory.md
+          - discovery: api/discovery.md
+          - middlewares: api/middlewares.md
           - router_builder: api/router_builder.md
           - http: api/http.md
-      - CLI: api/cli.md
+          - i18n: api/i18n.md
+  - Changelog: changelog.md

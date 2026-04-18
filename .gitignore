@@ -48,6 +48,7 @@ docs/_build/
 # --- Linting & Typing ---
 .mypy_cache/
 .ruff_cache/
+.uv-cache/
 .dmypy.json
 dmypy.json
 .pyre/
@@ -64,5 +65,9 @@ dmypy.json
 .env
 .envrc
 *.log
+.agents/
+.claude/
+# Sandbox for template E2E testing
+sandbox/
 # Temporary files from LocalesCompiler (if they leak into root)
 bot_locales_*

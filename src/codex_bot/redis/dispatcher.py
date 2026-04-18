@@ -1,31 +1,33 @@
 """
-BotRedisDispatcher — Dispatcher for messages from Redis Stream.
+Redis Orchestration — Unified asynchronous event processing layer.
 
-Works on the principle of aiogram.Dispatcher, but for Redis Stream:
-registers handlers via decorators or include_router(),
-dispatches incoming messages by type.
+Provides a comprehensive suite of tools for consuming, routing, and
+dispatching Redis Stream events. Supports distributed horizontal scaling through
+the consumer group pattern and offers per-event dependency injection.
 """
+
+from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
-from .router import FilterFunc, HandlerFunc, RedisRouter
+if TYPE_CHECKING:
+    from .router import FilterFunc, HandlerFunc, RedisRouter
 
 log = logging.getLogger(__name__)
 
 
-class RetrySchedulerProtocol:
-    """
-    Protocol for a retry scheduler (ARQ or similar).
+@runtime_checkable
+class RetrySchedulerProtocol(Protocol):
+    """Protocol for a retry scheduler (ARQ or similar).
 
     Implement and pass to BotRedisDispatcher for automatic
     rescheduling of failed messages to a retry queue.
     """
 
     async def schedule_retry(self, stream_name: str, payload: dict[str, Any], delay: int = 60) -> None:
-        """
-        Schedules message reprocessing.
+        """Schedules message reprocessing.
 
         Args:
             stream_name: Redis Stream name.
@@ -36,17 +38,11 @@ class RetrySchedulerProtocol:
 
 
 class BotRedisDispatcher:
-    """
-    Redis Stream message dispatcher for a Telegram bot.
+    """Redis Stream message dispatcher for a Telegram bot.
 
-    Allows registering handlers via decorators (@dispatcher.on_message)
-    or via routers (include_router). When processing a message:
-
-    1. Determines the type by the ``"type"`` field in the payload.
-    2. Finds suitable handlers (considering filters).
-    3. On handler error — if a ``retry_scheduler`` exists, passes the
-       task to it and returns control (Stream ACK will occur in the processor).
-       If there is no scheduler or it fails — re-raises the exception (no ACK).
+    Allows registering handlers via decorators or routers. Orchestrates the
+    dispatching of incoming messages by type, supporting filtering and
+    automated retry scheduling via external protocols.
 
     Args:
         retry_scheduler: Optional retry scheduler (ARQ, etc.).
@@ -69,16 +65,20 @@ class BotRedisDispatcher:
     """
 
     def __init__(self, retry_scheduler: RetrySchedulerProtocol | None = None) -> None:
-        self._container: Any = None
+        """Initializes the dispatcher with an empty router list.
+
+        Args:
+            retry_scheduler: Optional service for message retries.
+        """
+        self._container: Any | None = None
         self._retry_scheduler = retry_scheduler
         self._handlers: dict[str, list[tuple[HandlerFunc, FilterFunc | None]]] = {}
         log.info("BotRedisDispatcher | initialized")
 
     def setup(self, container: Any) -> None:
-        """
-        Sets the DI container before processing begins.
+        """Sets the DI container before processing begins.
 
-        If a handler needs a Bot to send messages — it retrieves it
+        If a handler needs a Bot to send messages - it retrieves it
         directly from ``container.bot``.
 
         Args:
@@ -87,8 +87,7 @@ class BotRedisDispatcher:
         self._container = container
 
     def include_router(self, router: RedisRouter) -> None:
-        """
-        Connects a RedisRouter with its handlers.
+        """Connects a RedisRouter with its handlers.
 
         Args:
             router: Router from a feature.
@@ -102,17 +101,16 @@ class BotRedisDispatcher:
     def on_message(
         self,
         message_type: str,
-        filter_func: "FilterFunc | None" = None,
+        filter_func: FilterFunc | None = None,
     ) -> Callable[[HandlerFunc], HandlerFunc]:
-        """
-        Decorator for registering a handler directly in the dispatcher.
+        """Decorator for registering a handler directly in the dispatcher.
 
         Args:
             message_type: Redis Stream message type.
             filter_func: Optional payload -> bool filter.
 
         Returns:
-            Decorator.
+            Decorator function.
         """
 
         def decorator(handler: HandlerFunc) -> HandlerFunc:
@@ -123,12 +121,12 @@ class BotRedisDispatcher:
 
         return decorator
 
-    async def process_message(self, message_data: dict[str, Any]) -> None:
-        """
-        Dispatches an incoming Redis Stream message.
+    async def process_message(self, message_data: dict[str, Any], stream_name: str = "bot_events") -> None:
+        """Dispatches an incoming Redis Stream message.
 
         Args:
             message_data: Message payload. Required field: ``"type"``.
+            stream_name: Redis Stream name for retry scheduling. Defaults to ``"bot_events"``.
         """
         if not self._container:
             log.error("BotRedisDispatcher | container not set — call setup() first")
@@ -146,16 +144,18 @@ class BotRedisDispatcher:
 
         for handler, filter_func in handlers:
             try:
+                # Filter check
                 if filter_func is None or filter_func(message_data):
                     log.debug(f"BotRedisDispatcher | calling {handler.__name__} for type='{msg_type}'")
                     await handler(message_data, self._container)
             except Exception as e:
                 log.error(f"BotRedisDispatcher | handler {handler.__name__} failed: {e}")
 
+                # Attempt to schedule retry if scheduler is available
                 if self._retry_scheduler:
                     try:
                         await self._retry_scheduler.schedule_retry(
-                            stream_name="bot_events",
+                            stream_name=stream_name,
                             payload=message_data,
                             delay=60,
                         )

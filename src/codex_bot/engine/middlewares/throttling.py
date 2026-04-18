@@ -1,9 +1,9 @@
 """
-ThrottlingMiddleware — Spam protection via atomic Redis rate limiting.
+Atomic Rate Limiting — Redis-backed update orchestration.
 
-Uses the atomic SET NX (Set if Not eXists) operation instead of
-two separate EXISTS + SET, which eliminates race conditions during
-concurrent requests and halves the load on Redis.
+Implements high-performance throttling using the atomic `SET NX` operation.
+Designed to eliminate race conditions in concurrent update flows and
+minimize Redis round-trips by combining validation and persistence logic.
 """
 
 import logging

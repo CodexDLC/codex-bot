@@ -1,142 +1,76 @@
-# 🧭 Documentation Standard for codex-bot
+# Codex Bot Documentation Standard
 
-> **AUTHORITY:** This document defines how documentation is written, structured, and maintained in the `codex-bot` library.
+## 1. 📂 Domain-Driven Structure
+We divide documentation not by code files, but by **Purpose (Domain/Service)**. This structure ensures readiness for monorepo expansion or separate library extraction.
 
----
-
-## 1. 📜 Core Philosophy
-
-We maintain documentation in **two languages** to ensure international accessibility while keeping the local community engaged.
-
-### 🇬🇧 English (Primary / Technical Truth)
-
-- **Mandatory for:** All Pull Requests and technical specifications.
-- **Location:**
-  - `docs/api/` — Technical API reference (auto-generated from docstrings).
-  - `docs/en_EN/` — Conceptual guides and architectural mirroring.
-- **Content:**
-  - Full technical specifications.
-  - API documentation (via `docs/api/`).
-  - Code examples and integration guides.
-- **Goal:** Single source of truth. If code contradicts EN docs, it is a bug.
-
-### 🇷🇺 Russian (Secondary / Conceptual Hub)
-
-- **Optional for Contributors:** If you don't speak Russian, write EN docs. Maintainers will add RU translation.
-- **Location:** `docs/ru_RU/` (mirrors folder structure).
-- **Content:**
-  - Conceptual translation (the "why" and "how").
-  - Links to `docs/api/` for technical details instead of duplication.
-  - Architect's mental model and design decision explanations.
-- **Goal:** Help Russian-speaking developers understand the "why" behind the framework's architecture.
+| Section (EN/RU) | Description | Content (examples) |
+| :--- | :--- | :--- |
+| architecture/domains/ | Core Business Logic | booking, calculator, calendar |
+| architecture/services/ | Infrastructure Services | llm, notifications, worker, redis |
+| architecture/platform/ | Base Utils & Configs | common, core, settings, schemas |
+| architecture/adapters/ | Framework Bridges | django, arq |
 
 ---
 
-## 2. ☯️ Twin Realms Principle
+## 2. 🛠 API Reference (docs/api/) — Code Mirror
+Markdown files in this section mirror the Python module structure in `src/`.
 
-Documentation languages serve different purposes:
-
-### 🇬🇧 EN = Technical Truth
-
-- **For:** AI generators, external libraries, standards compliance.
-- **Format:** Granular (mirrors `src/codex_bot/` structure).
-- **Contains:**
-  - API Reference (in `docs/api/`).
-  - Mermaid Diagrams (Sequence, Class, ER).
-  - Integration patterns.
-
-### 🇷🇺 RU = Architect's Mind
-
-- **For:** Human developers, system understanding.
-- **Format:** Aggregated (1 folder = 1 README).
-- **Contains:**
-  - **The Why:** Why this solution (e.g., why Stateless Orchestrators) was chosen.
-  - **The Flow:** How data flows through the system (simplified).
-  - **Links:** References to `docs/api/` files for technical details.
+- **Hierarchy:** If the code is at `src/codex_bot/fsm/state_manager.py`, the API doc should be at `docs/api/fsm/state_manager.md`.
+- **Grouping:** In the MkDocs menu: `API Reference -> fsm -> state_manager`.
+- **Content:** Each file uses the `::: codex_bot.module_name` directive to automatically extract classes and functions from docstrings.
 
 ---
 
-## 3. 🗂️ Structure Mirroring Rule
+## 3. 🗺 Architecture Guides — Logic Mirror
+These guides describe the **Domain as a whole** to provide a high-level overview of interactions.
 
-Documentation structure **MUST** mirror the code structure in `src/codex_bot/`.
-
-### Mapping Example
-
-| Code Location | Documentation Location (EN/RU) |
-|:---|:---|
-| `src/codex_bot/base/` | `docs/[lang]/architecture/base/` |
-| `src/codex_bot/engine/router_builder/` | `docs/[lang]/architecture/engine/router_builder/` |
-| `src/codex_bot/redis/` | `docs/[lang]/architecture/redis/` |
-
-### Why?
-
-- **1:1 Mapping:** Easy to find docs for any code module.
-- **No Orphans:** Prevents documentation from getting lost.
-- **Refactoring Safety:** When code moves, docs move with it.
+Inside `architecture/domains/` (or `services/`):
+- **Domain Folder:** Create a subfolder for each major node (e.g., `architecture/domains/booking/`).
+- **Files inside:**
+    - `README.md` — Entry point: general diagram, domain purpose, quick start.
+    - `logic_deep_dive.md` — (Optional) Detailed description of complex algorithms (e.g., `ChainFinder`).
+    - `data_flow.md` — Data flow diagram (from DTO to response).
 
 ---
 
-## 4. 🧭 Navigation Standard
+## 4. 🧭 Content Mapping Example
 
-Every documentation file must be easily navigable.
+| Content Type | Code Path | Docs Path (EN/RU) | Writing Style |
+| :--- | :--- | :--- | :--- |
+| **API** | `fsm/state_manager.py` | `docs/api/fsm/state_manager.md` | Reference: fields, types, validation. |
+| **API** | `base/view_dto.py` | `docs/api/base/view_dto.md` | Reference: DTO structure and immutability rules. |
+| **Architecture** | `fsm/` | `docs/[lang]/architecture/services/fsm/README.md` | Guide: How to use state isolation and GC. |
 
-### Breadcrumbs (Mandatory)
+---
 
-Every file **MUST** start with a navigation header:
+## 5. 🚀 Evolution (Roadmap & Tasks)
+The `docs/evolution/` folder is used for project development management. It is identical in both RU and EN versions.
+
+- **Roadmap:** `docs/evolution/roadmap.md` — Global development plan.
+- **Tasks:** `docs/evolution/tasks/[domain_name]/[task_name].md` — Specific feature tasks.
+- **Architecture Links:** Every task must reference the API or Architecture guide it affects.
+
+---
+
+## 6. 🛠 Development Standards (Code Quality)
+
+- **Zero Any:** Using `Any` is strictly prohibited. Use `Protocol`, `TypeVar`, or `Generic` for unknown types.
+- **Strict Protocols:** Always use `@runtime_checkable` protocols for Dependency Inversion.
+- **Google-style Docstrings:** Every class and public method MUST have docstrings with `Args`, `Returns`, `Raises`, and `Example` blocks.
+- **Stateless Core:** Services and Orchestrators must not store user state in `self`. Use the `Director` context.
+- **I18n Namespacing:** All Fluent keys (`.ftl`) MUST start with the feature prefix (e.g., `auth-login-btn`) to prevent collisions during automated merging.
+
+---
+
+## 7. ☯️ Strict Mirroring Rule
+The `ru_RU` and `en_EN` folders must be structurally identical.
+If a new diagram is added to `docs/en_EN/architecture/domains/booking.md`, it **must** appear in the corresponding RU file.
+
+---
+
+## 8. 🧭 Navigation Standard (Breadcrumbs)
+Every file must start with breadcrumbs for easy navigation:
 
 ```markdown
-[⬅️ Back](../README.md) | [🏠 Docs Root](../../README.md)
+[⬅️ Back to Section](../README.md) | [🗺 Roadmap](../../evolution/roadmap.md) | [🏠 Home](../../../README.md)
 ```
-
-- **Back:** Links to the current directory's `README.md`.
-- **Docs Root:** Links to the documentation root (`docs/README.md`).
-
-### Index Files (README.md)
-
-Every directory **MUST** have a `README.md` acting as a navigation hub.
-
-**Required Structure:**
-
-1. **Header:** Emoji 📂 + Section Name.
-2. **Navigation:** Breadcrumbs.
-3. **Description:** Short summary (2-3 sentences).
-4. **Map:** Table or list of files in **logical reading order** (not alphabetical).
-
----
-
-## 5. 📝 File Naming & Organization
-
-### Naming Conventions
-
-- **Format:** `snake_case.md` (e.g., `orchestrator_logic.md`).
-- **No Prefixes:** Do NOT use `01_`, `02_` prefixes in filenames.
-- **Reading Order:** Defined in `README.md` map.
-
-### Language Folders
-
-All documents **MUST** reside in:
-
-- `docs/api/` (Technical EN)
-- `docs/en_EN/` (Conceptual EN)
-- `docs/ru_RU/` (Conceptual RU)
-
----
-
-## 6. ✅ Markdown Linting Rules (Strict)
-
-1. **MD047 (End with Newline):** Every file must end with exactly **one newline** (`\n`).
-2. **MD032 (List Spacing):** Blank line before and after any list.
-3. **MD007 (Indentation):** Use **2 spaces** for nested lists.
-
----
-
-## 7. 🚫 Common Mistakes
-
-- **❌ Duplicating Code in RU Docs:** Link to `docs/api/` instead.
-- **❌ Numbered Prefixes:** Use `README.md` map for order.
-- **❌ Missing Breadcrumbs:** Always add the navigation header.
-- **❌ Language-neutral folders:** Use `en_EN` or `ru_RU`.
-
----
-
-**Last Updated:** 2025-02-07
