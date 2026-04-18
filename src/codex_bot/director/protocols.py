@@ -6,9 +6,14 @@ interact with features and the DI container without being coupled to
 specific implementations.
 """
 
+from collections.abc import Sequence
 from typing import Any, NamedTuple, Protocol, runtime_checkable
 
 from aiogram.fsm.state import State
+
+from codex_bot.base.view_dto import UnifiedViewDTO
+
+"""TypeVar for the orchestrator payload. A specific subclass specifies the type explicitly."""
 
 
 class SceneConfig(NamedTuple):
@@ -31,6 +36,31 @@ class SceneConfig(NamedTuple):
 
     fsm_state: State
     entry_service: str
+
+
+@runtime_checkable
+class BaseTransitionGuard(Protocol):
+    """Protocol for transition guards.
+
+    Guards are used to intercept transitions between features. They can
+    be used for RBAC, rate limiting, or any other logic that should block
+    a transition.
+    """
+
+    async def check_access(
+        self,
+        director: Any,
+        feature: str,
+        orchestrator: Any,
+        payload: Any,
+    ) -> bool | UnifiedViewDTO:
+        """Checks if the transition is allowed.
+
+        Returns:
+            True if the transition is allowed, or a `UnifiedViewDTO`
+            to block the transition and return the DTO to the user.
+        """
+        ...
 
 
 @runtime_checkable
@@ -74,3 +104,8 @@ class ContainerProtocol(Protocol):
     """
 
     features: dict[str, OrchestratorProtocol]
+
+    @property
+    def transition_guards(self) -> Sequence[BaseTransitionGuard]:
+        """Sequence of guards to run before any feature transition."""
+        ...

@@ -11,7 +11,11 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Any, Protocol, runtime_checkable
+from collections.abc import Sequence
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+
+if TYPE_CHECKING:
+    from codex_bot.director.protocols import BaseTransitionGuard
 
 from aiogram import Bot
 
@@ -27,8 +31,11 @@ log = logging.getLogger(__name__)
 class SettingsProtocol(Protocol):
     """Ensures settings have required admin lists."""
 
-    superuser_ids_list: list[int]
-    owner_ids_list: list[int]
+    @property
+    def superuser_ids_list(self) -> list[int]: ...
+
+    @property
+    def owner_ids_list(self) -> list[int]: ...
 
 
 @runtime_checkable
@@ -60,8 +67,24 @@ class BaseBotContainer:
         self.redis_client = redis_client
         self._bot: Bot | None = None
         self._view_sender: ViewSender | None = None
-        # Registry of features: could be simple objects or complex orchestrators
+
+        # Registry of features and guards
         self.features: dict[str, FeatureProtocol | Any] = {}
+        self._transition_guards: list[BaseTransitionGuard] = []
+
+    @property
+    def transition_guards(self) -> Sequence[BaseTransitionGuard]:
+        """Sequence of guards to run before any feature transition."""
+        return tuple(self._transition_guards)
+
+    def register_guard(self, guard: BaseTransitionGuard) -> None:
+        """Adds a transition guard to the container.
+
+        Guards are executed by the Director in the order they were registered.
+        """
+        if guard not in self._transition_guards:
+            self._transition_guards.append(guard)
+            log.debug(f"Container | Registered transition guard: {guard.__class__.__name__}")
 
     @property
     def bot(self) -> Bot:

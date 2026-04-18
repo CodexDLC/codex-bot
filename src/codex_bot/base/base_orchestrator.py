@@ -44,6 +44,9 @@ class BaseBotOrchestrator(ABC, Generic[PayloadT]):  # noqa: UP046
         ```
     """
 
+    access_scopes: set[str] = set()
+    """Set of required scopes for this feature. Used by TransitionGuards."""
+
     def __init__(self, expected_state: str | None = None) -> None:
         self.expected_state = expected_state
 
@@ -114,8 +117,8 @@ class BaseBotOrchestrator(ABC, Generic[PayloadT]):  # noqa: UP046
         if director:
             res = res.model_copy(
                 update={
-                    "chat_id": res.chat_id or director.chat_id,
-                    "session_key": res.session_key or director.user_id,
+                    "chat_id": res.chat_id or director.context_id,
+                    "session_key": res.session_key or director.session_key,
                     "trigger_message_id": res.trigger_message_id or director.trigger_id,
                 }
             )

@@ -49,7 +49,11 @@ class DirectorMiddleware(BaseMiddleware):
 
         # 3. Instantiate Director
         director = Director(
-            container=container, state=state, user_id=ctx.user_id, chat_id=ctx.chat_id, trigger_id=ctx.message_id
+            container=container,
+            state=state,
+            session_key=ctx.user_id,
+            context_id=ctx.chat_id,
+            trigger_id=ctx.message_id,
         )
 
         # 4. Inject into data for handlers

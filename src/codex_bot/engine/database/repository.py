@@ -7,7 +7,7 @@ management via middleware.
 """
 
 from collections.abc import Sequence
-from typing import Any, Generic, Protocol, TypeVar, cast, runtime_checkable
+from typing import Any, Protocol, cast, runtime_checkable
 
 from sqlalchemy import delete, select, update
 from sqlalchemy.engine import CursorResult
@@ -21,11 +21,7 @@ class Identifiable(Protocol):
     id: Any
 
 
-# Type variable for the SQLAlchemy model
-ModelType = TypeVar("ModelType", bound=Identifiable)
-
-
-class BaseRepository(Generic[ModelType]):
+class BaseRepository[ModelType: Identifiable]:
     """
     Abstract Base Repository for CRUD operations.
 

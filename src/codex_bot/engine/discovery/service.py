@@ -13,9 +13,16 @@ from typing import Any, Literal
 
 from aiogram import Router
 
+try:
+    from codex_platform.stream_broker import StreamRouter  # type: ignore[import-not-found]
+except ImportError:
+
+    class StreamRouter:  # type: ignore
+        pass
+
+
 from ...fsm.garbage_collector import GarbageStateRegistry
-from ...redis.dispatcher import BotRedisDispatcher
-from ...redis.router import RedisRouter
+from ...stream.dispatcher import BotStreamDispatcher
 
 log = logging.getLogger(__name__)
 
@@ -34,7 +41,7 @@ class FeatureDiscoveryService:
         module_prefix: str = "features",
         installed_features: list[str] | None = None,
         installed_redis_features: list[str] | None = None,
-        redis_dispatcher: BotRedisDispatcher | None = None,
+        redis_dispatcher: BotStreamDispatcher | None = None,
     ) -> None:
         """
         Initializes the discovery service.
@@ -206,7 +213,7 @@ class FeatureDiscoveryService:
         try:
             handler_module = importlib.import_module(path)
             router = getattr(handler_module, "redis_router", None)
-            if isinstance(router, RedisRouter):
+            if isinstance(router, StreamRouter):
                 self._redis_dispatcher.include_router(router)
         except ImportError:
             pass
