@@ -1,13 +1,18 @@
+from __future__ import annotations
+
 import pathlib
+from typing import Any
+
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 from codex_bot.engine.factory.bot_builder import BotBuilder
 from codex_bot.engine.protocols import ContainerProtocol
+
 from {{ project_name }}.core.config import BotSettings
 from {{ project_name }}.core.settings import CUSTOM_MIDDLEWARES{% if use_i18n %}, DEFAULT_LOCALE{% endif %}
 
 {% if use_loguru %}
-from loguru import logger as log
+# from loguru import logger as log
 {% else %}
 import logging
 log = logging.getLogger(__name__)
@@ -59,7 +64,10 @@ def build_bot(
     # A. Data Infrastructure (if enabled)
     {% if data_mode == 'direct' %}
     from codex_bot.engine.middlewares.database import DatabaseTransactionMiddleware
-    builder.add_project_middleware(DatabaseTransactionMiddleware(session_maker=container.session_factory))
+    # Cast container to Any to access session_factory which is project-specific
+    project_container: Any = container
+    if hasattr(project_container, "session_factory"):
+        builder.add_project_middleware(DatabaseTransactionMiddleware(session_maker=project_container.session_factory))
     {% endif %}
 
     # B. MANDATORY CORE (Container, Director, UserValidation)

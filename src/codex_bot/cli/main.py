@@ -36,6 +36,7 @@ def main() -> None:
     sp.add_argument("--i18n", action="store_true", help="Enable i18n")
     sp.add_argument("--loguru", action="store_true", help="Use Loguru")
     sp.add_argument("--force", action="store_true", help="Overwrite existing")
+    sp.add_argument("--dev", action="store_true", help="Enable strict development mode (linting, typing)")
     sp.set_defaults(func=start_project_command)
 
     # --- Group: Feature Management ---

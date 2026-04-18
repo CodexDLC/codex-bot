@@ -4,8 +4,10 @@ Inherits common CRUD logic from the codex-bot library.
 """
 
 from typing import TypeVar
+
 from codex_bot.engine.database.repository import BaseRepository as CoreBaseRepository
-from infrastructure.models.base import ProjectBase
+
+from ..models.base import ProjectBase
 
 # Generic type for SQLAlchemy models
 ModelType = TypeVar("ModelType", bound=ProjectBase)

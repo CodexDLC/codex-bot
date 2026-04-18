@@ -1,41 +1,38 @@
-from aiogram import Router, F
-from aiogram.types import CallbackQuery
-from aiogram.filters import StateFilter
+from __future__ import annotations
+
+import logging
+from typing import Any
+
+from aiogram import Router, types
+from aiogram.filters import Command
+from aiogram_i18n import I18nContext
+from codex_bot.director import Director
+
+from ..feature_setting import {{ class_name }}States
+from ..logic.orchestrator import {{ class_name }}Orchestrator
 
 {% if use_loguru %}
 from loguru import logger as log
 {% else %}
-import logging
 log = logging.getLogger(__name__)
 {% endif %}
 
-from codex_bot.director import Director
-from ..feature_setting import {{ class_name }}States
-from ..resources.callbacks import {{ class_name }}Callback
+router = Router(name="{{ feature_name }}_router")
 
-router = Router(name="{{ feature_key }}_router")
 
-@router.callback_query(
-    {{ class_name }}Callback.filter(F.action == "action"),
-    StateFilter({{ class_name }}States.main)
-)
-async def handle_action(
-    call: CallbackQuery,
-    callback_data: {{ class_name }}Callback,
+@router.message(Command("{{ feature_name }}"))
+@router.message({{ class_name }}States.main)
+async def handle_{{ feature_name }}_entry(
+    message: types.Message,
     director: Director,
-):
+    orchestrator: {{ class_name }}Orchestrator,
+    i18n: I18nContext,
+) -> Any:
     """
-    Handler for the '{{ feature_key }}' action.
-
-    The 'Director' object is automatically injected by DirectorMiddleware.
-    It provides access to the DI container, FSM state, and user context.
+    Main entry handler for the {{ class_name }} feature.
     """
-    await call.answer()
-    log.info(f"Feature '{{ feature_key }}' action triggered by user {director.user_id}")
+    log.debug(f"{{ class_name }} | Command Handler | user_id={message.from_user.id if message.from_user else 'unknown'}")
 
-    # Launch the scene via Director
-    view_dto = await director.set_scene("{{ feature_key }}", payload=callback_data)
-
-    # UI Delivery via ViewSender (accessible through the container)
-    if view_dto:
-        await director.container.view_sender.send(view_dto)
+    # Example of calling the orchestrator for rendering
+    view = await orchestrator.handle_entry(director=director)
+    return await view.send(message, i18n=i18n)

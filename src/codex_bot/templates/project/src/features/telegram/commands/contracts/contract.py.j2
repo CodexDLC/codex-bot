@@ -1,12 +1,11 @@
-from typing import Protocol
-from shared.schemas.user import UserUpsertDTO
+from typing import Protocol, Any
 
 class AuthDataProvider(Protocol):
     """
     Contract for user authentication and profile management.
     Implementations (API client or Repository) are injected via DI.
     """
-    async def upsert_user(self, user_dto: UserUpsertDTO) -> None:
+    async def upsert_user(self, user_dto: Any) -> None:
         """Create or update user in the system."""
         ...
 

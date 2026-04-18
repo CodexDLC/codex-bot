@@ -1,7 +1,11 @@
 import asyncio
-from typing import TYPE_CHECKING
+from typing import Any
 
 from aiogram import Bot
+
+# 1. Base Library Imports
+from codex_bot.engine.container import BaseBotContainer
+from codex_bot.engine.discovery.service import FeatureDiscoveryService
 
 {% if use_loguru %}
 from loguru import logger as log
@@ -9,11 +13,6 @@ from loguru import logger as log
 import logging
 log = logging.getLogger(__name__)
 {% endif %}
-
-# 1. Base Library Imports
-from codex_bot.engine.container import BaseBotContainer
-from codex_bot.engine.discovery.service import FeatureDiscoveryService
-from codex_bot.sender.view_sender import ViewSender
 
 {% if use_redis %}
 from redis.asyncio import Redis
@@ -27,8 +26,7 @@ from {{ project_name }}.core.settings import INSTALLED_FEATURES, INSTALLED_REDIS
 
 {% if data_mode == 'direct' %}
 from sqlalchemy.ext.asyncio import AsyncEngine
-from codex_bot.engine.database.engine import build_engine
-from {{ project_name }}.infrastructure.database import create_session_factory
+from codex_bot.engine.database.engine import build_engine, build_session_maker
 {% endif %}
 
 
@@ -44,13 +42,14 @@ class BotContainer(BaseBotContainer):
     {% else %}
     def __init__(self, settings: BotSettings, redis_client: None = None):
     {% endif %}
+        # Settings protocol ensures availability of owner/superuser lists
         super().__init__(settings, redis_client=redis_client)
 
         # --- 1. Infrastructure (Redis Streams) ---
         {% if use_redis_streams %}
         self.redis_dispatcher = BotRedisDispatcher()
         self.stream_processor = RedisStreamProcessor(
-            storage=redis_client,
+            storage=redis_client, # type: ignore
             stream_name="bot_events",
             consumer_group_name="bot_group",
             consumer_name=f"bot_worker_{settings.secret_key[:5]}"
@@ -63,12 +62,13 @@ class BotContainer(BaseBotContainer):
             url=settings.database_url,
             echo=settings.database_echo
         )
-        self.session_factory = create_session_factory(self.db_engine)
+        # Use core factory directly from the library
+        self.session_factory = build_session_maker(self.db_engine)
         {% endif %}
 
         # --- 3. Feature Discovery & Scaffolding ---
         {% if use_redis_streams %}
-        discovery_dispatcher = self.redis_dispatcher
+        discovery_dispatcher: Any = self.redis_dispatcher
         {% else %}
         discovery_dispatcher = None
         {% endif %}
@@ -114,8 +114,8 @@ class BotContainer(BaseBotContainer):
         {% endif %}
 
         {% if use_redis_streams %}
-        # No hasattr needed
-        cleanup_tasks.append(self.stream_processor.stop())
+        if hasattr(self.stream_processor, "stop"):
+            cleanup_tasks.append(self.stream_processor.stop())
         {% endif %}
 
         if cleanup_tasks:

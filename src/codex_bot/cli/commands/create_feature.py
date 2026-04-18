@@ -49,7 +49,7 @@ def interactive_ask_feature() -> dict[str, Any]:
         print("❌ Feature creation cancelled.")
         exit(1)
 
-    return answers
+    return dict(answers)
 
 
 def create_feature_command(args: Namespace) -> None:

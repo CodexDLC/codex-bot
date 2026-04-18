@@ -2,9 +2,10 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
+
 from .config import BotSettings
 
 if TYPE_CHECKING:
@@ -34,7 +35,7 @@ def mask_sensitive_data(text: str) -> str:
     return text
 
 
-def masking_patcher(record):
+def masking_patcher(record: Any) -> None:
     """Loguru patcher for automatic masking."""
     record["message"] = mask_sensitive_data(record["message"])
 

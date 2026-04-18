@@ -1,21 +1,22 @@
 from redis.asyncio import Redis
-# from codex_tools.redis.service import RedisService # Future library import
+
+from codex_platform.redis_service import RedisService
+
 
 class RedisContainer:
     """
     Container for Redis managers.
     Provides a unified entry point to the Redis data layer.
-    Assembled by CLI.
+    Assembled by CLI when adding new Redis managers.
     """
-    def __init__(self, redis_client: Redis):
-        self.redis_client = redis_client
 
-        # Base service wrapper (provided by codex-tools)
-        # self.service = RedisService(redis_client)
+    def __init__(self, redis_client: Redis) -> None:
+        self.redis_client = redis_client
+        self.service = RedisService(redis_client)
 
         # --- Registered Managers ---
         # [REDIS_MANAGERS_INITIALIZATION]
 
         # Example:
         # from .managers.example_cache import ExampleCacheManager
-        # self.example_cache = ExampleCacheManager(self.service)
+        # self.example_cache = ExampleCacheManager(redis_client)

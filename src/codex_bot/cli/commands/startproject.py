@@ -84,7 +84,7 @@ def interactive_ask(name: str) -> dict[str, Any]:
     if "use_redis_streams" not in answers:
         answers["use_redis_streams"] = False
 
-    return answers
+    return dict(answers)
 
 
 def start_project_command(args: Namespace) -> None:
@@ -132,14 +132,12 @@ def start_project_command(args: Namespace) -> None:
         "use_loguru": config["use_loguru"],
         "bot_token": config["bot_token"],
         "owner_id": config["owner_id"],
+        "is_dev": getattr(args, "dev", False),
     }
 
     # 3. Component Exclusion Rules
     # Cleaned up from ghost files (app_telegram.py, main.py in root)
     skip_rules = [
-        "src/infrastructure/database",
-        "root/alembic.ini",
-        "root/.env.example",
         "root/main.py.j2",
         "src/features/telegram/bot_menu/orchestrator.py",
     ]
@@ -148,6 +146,13 @@ def start_project_command(args: Namespace) -> None:
         skip_rules.append("src/features/telegram/bot_menu")
     if not any_redis:
         skip_rules.append("src/infrastructure/redis")
+
+    # DB logic for 'api' mode (skip DB infrastructure)
+    if config["mode"] == "api":
+        skip_rules.append("src/infrastructure/database")
+        skip_rules.append("src/infrastructure/migrations")
+        skip_rules.append("root/alembic.ini")
+
     if not config["use_redis_streams"]:
         skip_rules.append("src/features/redis")
     if not config["use_i18n"]:
@@ -213,10 +218,11 @@ def start_project_command(args: Namespace) -> None:
         print("\n🛠  SMART MERGE ACTION REQUIRED:")
         print("  1. Copy dependencies from 'pyproject.bot' to your 'pyproject.toml'")
         print("  2. Review 'manage.bot' for bot-specific commands")
-        print("  3. Run 'pip install -e .'")
+        print("  3. Run 'uv sync --extra dev'")
     else:
         print("\n🛠  Management Commands:")
-        print("  python manage.py run             - Start the bot (Dev)")
-        print(f"  python -m {name}.launcher        - Start the bot (Production)")
+        print("  uv sync --extra dev              - Create the local dev environment")
+        print("  uv run python manage.py run      - Start the bot (Dev)")
+        print(f"  uv run python -m {name}.launcher - Start the bot (Production)")
 
     print("\nHappy coding! 🥂")

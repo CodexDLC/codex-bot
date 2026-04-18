@@ -1,7 +1,7 @@
+from typing import Any, cast
 from aiogram.fsm.state import State, StatesGroup
-from typing import Any
 from .logic.orchestrator import StartOrchestrator
-from .ui.commands_ui import CommandsUI
+from .contracts.auth_contract import AuthDataProvider
 
 # 1. States Definition
 class CommandsStates(StatesGroup):
@@ -13,7 +13,6 @@ STATES = CommandsStates
 GARBAGE_COLLECT = False
 
 # 3. Menu Configuration
-# Usually, commands like /start are not shown in the main dashboard menu
 MENU_CONFIG = None
 
 # 4. Factory (DI)
@@ -21,12 +20,12 @@ def create_orchestrator(container: Any) -> StartOrchestrator:
     """
     Creates the orchestrator instance.
     """
-    # auth_provider should be registered in container or mocked here
+    # In a real project, AuthDataProvider implementation should be in the container.
+    # For now, we cast it to satisfy Mypy during template generation.
     auth_provider = getattr(container, 'auth_provider', None)
 
-    ui = CommandsUI()
     return StartOrchestrator(
-        auth_provider=auth_provider,
+        auth_provider=cast(AuthDataProvider, auth_provider),
         settings=container.settings
     )
 
@@ -34,5 +33,6 @@ def get_router() -> Any:
     """
     Returns the aiogram router for this feature.
     """
-    from .handlers.router import router
+    # Standard naming: we use 'handlers' instead of 'router'
+    from .handlers.handlers import router
     return router

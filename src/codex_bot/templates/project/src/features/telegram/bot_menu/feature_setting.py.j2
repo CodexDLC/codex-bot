@@ -1,19 +1,27 @@
-from aiogram.fsm.state import State, StatesGroup
+from aiogram import Router
+from typing import Any
+from .logic.orchestrator import BotMenuOrchestrator
 
-# 1. State Definition
-class BotMenuStates(StatesGroup):
-    main = State()
-
-STATES = BotMenuStates
+# 1. States Definition (Menu usually doesn't have its own states)
+STATES = None
 
 # 2. Garbage Collector Settings
-GARBAGE_COLLECT = True
+GARBAGE_COLLECT = False
 
-# 3. Factory (DI)
-def create_orchestrator(container):
+# 3. Menu Configuration
+# The Dashboard itself is not a feature in the menu list
+MENU_CONFIG = None
+
+# 4. Factory (DI)
+def create_orchestrator(container: Any) -> BotMenuOrchestrator:
     """
-    Factory function for the Menu Orchestrator.
-    bot_menu is a system feature and depends on DiscoveryService.
+    Creates the dashboard orchestrator instance.
     """
-    from .logic.orchestrator import BotMenuOrchestrator
     return BotMenuOrchestrator()
+
+def get_router() -> Router:
+    """
+    Returns the aiogram router for this feature.
+    """
+    from .handlers.handlers import router
+    return router

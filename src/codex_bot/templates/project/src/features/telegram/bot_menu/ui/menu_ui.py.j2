@@ -1,18 +1,22 @@
+from typing import Any
+
 from codex_bot.base.view_dto import ViewResultDTO
+
 from ..resources.keyboards import build_dashboard_keyboard
 from ..resources.texts import get_dashboard_title
 
 class BotMenuUI:
     """
-    Renders the main menu (Dashboard).
+    Renders the main dashboard UI.
     """
-    def render_dashboard(self, buttons: dict, mode: str = "bot_menu") -> ViewResultDTO:
+
+    def render_dashboard(self, buttons: dict[str, Any], mode: str = "bot_menu") -> ViewResultDTO:
         """
-        Generates ViewResultDTO with title and feature list.
+        Generates ViewResultDTO with title, feature descriptions, and keyboard.
         """
         title = get_dashboard_title(mode)
 
-        # Sort buttons by priority
+        # Sort feature buttons by priority
         sorted_buttons = sorted(buttons.values(), key=lambda x: x.get("priority", 100))
 
         description_lines = []
@@ -28,7 +32,7 @@ class BotMenuUI:
 
         full_text = title
         if description_lines:
-            full_text += "\n\nAvailable features:\n" + "\n".join(description_lines)
+            full_text += "\n\nAvailable Features:\n" + "\n".join(description_lines)
 
         return ViewResultDTO(
             text=full_text,

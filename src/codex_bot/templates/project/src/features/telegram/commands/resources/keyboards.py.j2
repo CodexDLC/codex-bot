@@ -1,11 +1,15 @@
+# клавиатуры хранять функции создания клавиатур
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from features.telegram.bot_menu.resources.callbacks import DashboardCallback
+from aiogram.types import InlineKeyboardMarkup
+
+# Accessing other features should be done with project prefix or relative imports
+from {{ project_name }}.features.telegram.bot_menu.resources.callbacks import DashboardCallback
 
 {% if use_i18n %}
 from aiogram_i18n import I18nContext
 {% endif %}
 
-def build_welcome_keyboard(is_admin: bool = False):
+def build_welcome_keyboard(is_admin: bool = False) -> InlineKeyboardMarkup:
     """
     Keyboards for the welcome screen.
     Redirects user to the Dashboard feature.

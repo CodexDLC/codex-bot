@@ -1,7 +1,27 @@
+# текст хранит допустим текст кнопок и всего такого
+
+{% if use_i18n %}
+from aiogram_i18n import I18nContext
+{% endif %}
+
 """
 Texts for basic bot commands (Welcome, Help, etc.).
 Used as fallbacks if i18n is not configured.
 """
+
+def get_help_text() -> str:
+    """Returns the help message."""
+    {% if use_i18n %}
+    i18n = I18nContext.get_current()
+    return i18n.commands.help.text()
+    {% else %}
+    return (
+        "<b>🆘 Help Center</b>\n\n"
+        "/start — Return to welcome screen\n"
+        "/help — Show this message\n"
+        "/menu — Open dashboard"
+    )
+    {% endif %}
 
 WELCOME_USER = (
     "<b>👋 Hello, {name}!</b>\n\n"
@@ -10,9 +30,3 @@ WELCOME_USER = (
 )
 
 WELCOME_ADMIN = "<b>👋 Hello, Administrator {name}!</b>\n\nYou have elevated privileges. Choose your workspace below:"
-
-HELP_TEXT = (
-    "<b>🆘 Help Center</b>\n\n"
-    "/start — Return to welcome screen\n"
-    "/help — Show this message"
-)

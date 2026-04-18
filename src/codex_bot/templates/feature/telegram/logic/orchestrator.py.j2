@@ -1,13 +1,16 @@
-from typing import Any, TYPE_CHECKING, Union
+from __future__ import annotations
+
+import logging
+from typing import TYPE_CHECKING, Any
+
 from codex_bot.base import BaseBotOrchestrator, UnifiedViewDTO, ViewResultDTO
-from ..ui.ui import {{ class_name }}UI
+
 from ..feature_setting import {{ class_name }}States
-from .state_manager import {{ class_name }}StateManager
+from ..ui.ui import {{ class_name }}UI
 
 {% if use_loguru %}
 from loguru import logger as log
 {% else %}
-import logging
 log = logging.getLogger(__name__)
 {% endif %}
 
@@ -19,39 +22,30 @@ class {{ class_name }}Orchestrator(BaseBotOrchestrator[Any]):
     """
     Business logic and navigation for the {{ class_name }} feature.
     """
-    def __init__(self):
-        super().__init__(expected_state={{ class_name }}States.main)
+    def __init__(self) -> None:
+        # expected_state must be a string for Director
+        super().__init__(expected_state={{ class_name }}States.main.state)
         self.ui = {{ class_name }}UI()
 
     async def render_content(
         self,
-        director: "Director" | None = None,
+        director: Director | None = None,
         payload: Any = None
-    ) -> Union[ViewResultDTO, UnifiedViewDTO]:
+    ) -> ViewResultDTO | UnifiedViewDTO:
         """
         Main logic for rendering feature content.
-
-        Example with Data Fetching & Smart Resolver:
-        ```python
-        # 1. Fetch data (Returns Envelope: meta + payload)
-        raw_data = await director.container.api.get_data(director.user_id)
-
-        # 2. Handle backend-driven navigation
-        data = await director.resolve(raw_data)
-        if isinstance(data, UnifiedViewDTO):
-            return data # Redirected to another scene
-        ```
         """
-        log.debug(f"{{ class_name }} | Rendering Content | user_id={director.user_id}")
+        if director:
+            log.debug(f"{{ class_name }} | Rendering Content | session_key={director.session_key}")
 
         return self.ui.render_main(payload)
 
     async def handle_entry(
         self,
-        director: "Director",
+        director: Director,
         payload: Any = None,
     ) -> UnifiedViewDTO:
         """Entry point into the feature. Called by Director on set_scene()."""
-        log.debug(f"{{ class_name }} | Action: Entry | user_id={director.user_id}")
+        log.debug(f"{{ class_name }} | Action: Entry | session_key={director.session_key}")
 
         return await self.render(director=director, payload=payload)

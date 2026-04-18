@@ -1,4 +1,7 @@
+from typing import Any
+
 from codex_bot.base import ViewResultDTO
+
 from ..resources.keyboards import build_dashboard_keyboard
 from ..resources.texts import get_dashboard_title
 
@@ -7,7 +10,7 @@ class BotMenuUI:
     Renders the main dashboard UI.
     """
 
-    def render_dashboard(self, buttons: dict, mode: str = "bot_menu") -> ViewResultDTO:
+    def render_dashboard(self, buttons: dict[str, Any], mode: str = "bot_menu") -> ViewResultDTO:
         """
         Generates ViewResultDTO with title, feature descriptions, and keyboard.
         """

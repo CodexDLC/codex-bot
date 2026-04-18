@@ -1,11 +1,13 @@
+from typing import Any
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.types import InlineKeyboardMarkup
 from .callbacks import DashboardCallback
 
 {% if use_i18n %}
 from aiogram_i18n import I18nContext
 {% endif %}
 
-def build_dashboard_keyboard(buttons: dict, mode: str = "bot_menu"):
+def build_dashboard_keyboard(buttons: dict[str, Any], mode: str = "bot_menu") -> InlineKeyboardMarkup:
     """
     Assembles the dashboard keyboard based on discovered feature buttons.
     """
@@ -19,7 +21,7 @@ def build_dashboard_keyboard(buttons: dict, mode: str = "bot_menu"):
         icon = btn_data.get("icon", "")
         label = btn_data.get("text", "Feature")
         text = f"{icon} {label}".strip()
-        key = btn_data.get("key")
+        key = str(btn_data.get("key"))
 
         callback = DashboardCallback(action="select", target=key).pack()
         builder.button(text=text, callback_data=callback)

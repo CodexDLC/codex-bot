@@ -2,6 +2,7 @@
 Static configuration for the Telegram Bot '{{ project_name | default('CodexBot') }}'.
 Contains lists of features and other non-secret settings.
 """
+from typing import Any
 
 # --- Telegram Features (Aiogram Routers) ---
 # List feature folder names from 'features/telegram/'
@@ -20,7 +21,7 @@ INSTALLED_REDIS_FEATURES: list[str] = [
 # Add your custom project middleware instances here.
 # They will be automatically registered AFTER the core framework ones.
 # Example: CUSTOM_MIDDLEWARES = [MyAnalyticsMiddleware(), LoggingMiddleware()]
-CUSTOM_MIDDLEWARES: list = []
+CUSTOM_MIDDLEWARES: list[Any] = []
 
 {% if use_i18n %}
 # --- Localization ---

@@ -28,8 +28,57 @@ dependencies = [
     {% endif %}
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+    "mypy>=1.10",
+]
+
 [project.scripts]
-run-bot = "{{ project_name }}.app_telegram:main"
+run-bot = "{{ project_name }}.launcher:run"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/{{ project_name }}"]
+
+{% if is_dev %}
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "aiogram.*",
+    "pydantic.*",
+    "pydantic_settings.*",
+    "codex_bot.*",
+    {% if use_redis %}
+    "redis.*",
+    {% endif %}
+    {% if data_mode == 'direct' %}
+    "sqlalchemy.*",
+    "alembic.*",
+    {% endif %}
+]
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM"]
+ignore = ["B008"]
+{% else %}
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+check_untyped_defs = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+{% endif %}
