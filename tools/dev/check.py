@@ -1,197 +1,134 @@
+"""Quality gate for codex-bot.
+
+This script prefers shared `codex_core` tooling when available, but keeps a
+local fallback runner so the repository stays self-validating in clean setups.
 """
-Quality gate for codex-bot library.
-Simplified version: uses pre-commit, mypy, pip-audit, and pytest.
-"""
+
+from __future__ import annotations
 
 import argparse
-import os
 import subprocess
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
-# --- Configuration ---
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-SRC_DIR = PROJECT_ROOT / "src"
-TESTS_DIR = PROJECT_ROOT / "tests"
+try:
+    from codex_core.dev.check_runner import BaseCheckRunner
+except ModuleNotFoundError:  # pragma: no cover - exercised in clean envs
+    BaseCheckRunner = None  # type: ignore[assignment]
 
 
-# ANSI Colors
-class Colors:
-    HEADER = "\033[95m"
-    BLUE = "\033[94m"
-    CYAN = "\033[96m"
-    GREEN = "\033[92m"
-    YELLOW = "\033[93m"
-    RED = "\033[91m"
-    ENDC = "\033[0m"
-    BOLD = "\033[1m"
+if BaseCheckRunner is not None:
+
+    class CheckRunner(BaseCheckRunner):
+        """Thin launcher; project policy lives in pyproject.toml."""
 
 
-def print_step(msg: str) -> None:
-    print(f"\n{Colors.YELLOW}🔍 {msg}...{Colors.ENDC}")
+else:
 
+    @dataclass(frozen=True)
+    class CheckStep:
+        """Single quality gate command."""
 
-def print_success(msg: str) -> None:
-    print(f"{Colors.GREEN}✅ {msg}{Colors.ENDC}")
+        name: str
+        command: list[str]
 
+    class CheckRunner:
+        """Local self-contained runner used when `codex_core` is unavailable."""
 
-def print_error(msg: str) -> None:
-    print(f"{Colors.RED}❌ {msg}{Colors.ENDC}")
+        PROJECT_NAME = "codex-bot"
+        INTEGRATION_REQUIRES = "Redis"
 
+        def __init__(self, project_root: Path) -> None:
+            self.project_root = project_root.resolve()
 
-def run_command(command: str, cwd: Path = PROJECT_ROOT, capture_output: bool = False) -> tuple[bool, str]:
-    """Runs a system command and returns result."""
-    try:
-        result = subprocess.run(
-            command,
-            cwd=cwd,
-            shell=True,
-            check=False,
-            text=True,
-            capture_output=capture_output,
-        )
-        return result.returncode == 0, result.stdout or result.stderr or ""
-    except Exception as e:
-        return False, str(e)
+        def main(self) -> None:
+            args = self._parse_args()
+            steps = self._build_steps(args)
 
+            print(f"[check] Running quality gate for {self.PROJECT_NAME} in {self.project_root}")
+            failed_steps: list[str] = []
 
-# --- Check Functions ---
+            for step in steps:
+                print(f"\n[check] {step.name}")
+                print(f"[check] > {' '.join(step.command)}")
+                result = subprocess.run(step.command, cwd=self.project_root, check=False)  # nosec B603
+                if result.returncode != 0:
+                    failed_steps.append(step.name)
+                    print(f"[check] FAIL: {step.name} (exit {result.returncode})")
+                    if args.fail_fast:
+                        break
+                else:
+                    print(f"[check] OK: {step.name}")
 
+            if failed_steps:
+                print("\n[check] Failed steps:")
+                for name in failed_steps:
+                    print(f"  - {name}")
+                raise SystemExit(1)
 
-def check_quality() -> bool:
-    print_step("Running Quality Hooks (pre-commit: Ruff, Format, Bandit)")
-    success, out = run_command("pre-commit run --all-files")
-    if not success:
-        print_error(f"Pre-commit failed:\n{out}")
-        return False
-    print_success("Quality hooks passed.")
-    return True
+            print("\n[check] Quality gate passed.")
 
+        def _parse_args(self) -> argparse.Namespace:
+            parser = argparse.ArgumentParser(description="Run local quality gate checks.")
+            parser.add_argument(
+                "--ci",
+                action="store_true",
+                help="Run full CI-like checks (integration + security).",
+            )
+            parser.add_argument(
+                "--with-integration",
+                action="store_true",
+                help="Include integration tests without --ci.",
+            )
+            parser.add_argument(
+                "--with-security",
+                action="store_true",
+                help="Include security checks without --ci.",
+            )
+            parser.add_argument(
+                "--fail-fast",
+                action="store_true",
+                help="Stop on the first failed step.",
+            )
+            return parser.parse_args()
 
-def check_types() -> bool:
-    print_step("Checking Types (Mypy)")
-    success, out = run_command(f"{sys.executable} -m mypy {SRC_DIR}", capture_output=True)
-    if not success:
-        print_error(f"Mypy check failed:\n{out}")
-    else:
-        print_success("Mypy check passed.")
-    return success
+        def _build_steps(self, args: argparse.Namespace) -> list[CheckStep]:
+            py = sys.executable
+            include_integration = args.ci or args.with_integration
+            include_security = args.ci or args.with_security
 
+            steps = [
+                CheckStep("Ruff lint", [py, "-m", "ruff", "check", "."]),
+                CheckStep("Ruff format", [py, "-m", "ruff", "format", "--check", "."]),
+                CheckStep("Mypy", [py, "-m", "mypy", "src"]),
+                CheckStep(
+                    "Unit tests",
+                    [py, "-m", "pytest", "tests/", "-m", "unit", "-v", "--tb=short"],
+                ),
+            ]
 
-def check_security() -> bool:
-    print_step("Security Audit (pip-audit)")
-    success, out = run_command("pip-audit", capture_output=True)
-    if not success:
-        print_error(f"Security audit failed:\n{out}")
-    else:
-        print_success("Security audit passed.")
-    return success
+            if include_integration:
+                steps.append(
+                    CheckStep(
+                        "Integration tests",
+                        [py, "-m", "pytest", "tests/", "-m", "integration", "-v", "--tb=short"],
+                    )
+                )
 
+            if include_security:
+                steps.extend(
+                    [
+                        CheckStep(
+                            "Bandit",
+                            [py, "-m", "bandit", "-q", "-c", "pyproject.toml", "-r", "src"],
+                        ),
+                        CheckStep("pip-audit", [py, "-m", "pip_audit"]),
+                    ]
+                )
 
-def run_tests(marker: str = "unit") -> bool:
-    print_step(f"Running {marker.capitalize()} Tests")
-    success, _ = run_command(f"pytest {TESTS_DIR} -m {marker} -v --tb=short")
-    if success:
-        print_success(f"{marker.capitalize()} tests passed.")
-    else:
-        print_error(f"{marker.capitalize()} tests failed.")
-    return success
-
-
-# --- Main Logic ---
-
-
-def run_all() -> None:
-    if os.name == "nt":
-        os.system("cls")
-    else:
-        os.system("clear")
-
-    print(f"{Colors.HEADER}{Colors.BOLD}=== codex-tools quality gate ==={Colors.ENDC}")
-
-    if not check_quality():
-        sys.exit(1)
-    if not check_types():
-        sys.exit(1)
-    if not check_security():
-        sys.exit(1)
-
-    if not run_tests("unit"):
-        sys.exit(1)
-
-    choice = input(f"\n{Colors.YELLOW}🚀 Run Integration Tests? (Requires Redis) [y/N]: {Colors.ENDC}").lower()
-    if choice == "y" and not run_tests("integration"):
-        sys.exit(1)
-
-    print(f"\n{Colors.GREEN}{Colors.BOLD}🎉 ALL CHECKS PASSED!{Colors.ENDC}")
-
-
-def interactive_menu() -> None:
-    while True:
-        print(f"\n{Colors.CYAN}{Colors.BOLD}🛠 codex-tools Quality Tool{Colors.ENDC}")
-        print("1. Fast Check (Pre-commit: Lint, Format, Bandit)")
-        print("2. Type Check (Mypy)")
-        print("3. Run Unit Tests")
-        print("4. Run Integration Tests (Requires Redis)")
-        print("5. Security Audit (pip-audit)")
-        print("6. Run Everything")
-        print("0. Exit")
-
-        choice = input(f"\n{Colors.YELLOW}Select an option [6]: {Colors.ENDC}").strip() or "6"
-
-        if choice == "1":
-            check_quality()
-        elif choice == "2":
-            check_types()
-        elif choice == "3":
-            run_tests("unit")
-        elif choice == "4":
-            run_tests("integration")
-        elif choice == "5":
-            check_security()
-        elif choice == "6":
-            run_all()
-        elif choice == "0":
-            break
-        else:
-            print_error("Invalid choice")
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="codex-tools quality gate")
-    parser.add_argument("--all", action="store_true", help="Run all checks")
-    parser.add_argument("--lint", action="store_true", help="Run pre-commit hooks")
-    parser.add_argument("--types", action="store_true", help="Run mypy")
-    parser.add_argument("--security", action="store_true", help="Run pip-audit")
-    parser.add_argument("--tests", choices=["unit", "integration", "all"], help="Run specified tests")
-    parser.add_argument("--menu", action="store_true", help="Open interactive menu")
-
-    args = parser.parse_args()
-
-    if args.all:
-        run_all()
-    elif args.lint:
-        sys.exit(0 if check_quality() else 1)
-    elif args.types:
-        sys.exit(0 if check_types() else 1)
-    elif args.security:
-        sys.exit(0 if check_security() else 1)
-    elif args.tests:
-        if args.tests == "all":
-            u = run_tests("unit")
-            i = run_tests("integration")
-            sys.exit(0 if u and i else 1)
-        else:
-            sys.exit(0 if run_tests(args.tests) else 1)
-    elif args.menu:
-        interactive_menu()
-    else:
-        interactive_menu()
+            return steps
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        print(f"\n{Colors.RED}Aborted.{Colors.ENDC}")
-        sys.exit(1)
+    CheckRunner(Path(__file__).parent.parent.parent).main()

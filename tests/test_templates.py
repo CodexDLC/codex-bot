@@ -58,6 +58,7 @@ TEST_CONTEXTS = [
 ]
 
 
+@pytest.mark.unit
 @pytest.mark.parametrize("template_rel_path", get_all_template_paths())
 @pytest.mark.parametrize("context", TEST_CONTEXTS)
 def test_render_all_templates(template_rel_path: str, context: dict):

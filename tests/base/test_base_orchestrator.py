@@ -14,8 +14,8 @@ class MockOrchestrator(BaseBotOrchestrator[str]):
 @pytest.fixture
 def director():
     director = MagicMock()
-    director.chat_id = 12345
-    director.user_id = "user:12345"
+    director.context_id = 12345
+    director.session_key = "user:12345"
     director.trigger_id = None
     return director
 
