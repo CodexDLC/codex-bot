@@ -13,7 +13,7 @@ wheels = [
 
 [[package]]
 name = "aiogram"
-version = "3.26.0"
+version = "3.27.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -23,9 +23,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/dd/2b/11709d58a7c47a773cd47239c7b5db258f02f31d784265bddeb562f3e9f9/aiogram-3.26.0.tar.gz", hash = "sha256:12fa1bce9c8cee0f1214f5e3f91bb631586c4503854d6138dacbdd7e7dc1020c", size = 1729985, upload-time = "2026-03-02T23:29:20.843Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b5/09/4bfeb0314b4d78739fc7c3cdcaa77eacaeb089312d9c16f3eb538d0f0f97/aiogram-3.27.0.tar.gz", hash = "sha256:ed5fd6b40d80a6cdb215ab162c9bd9d9b7892fb2710b45e3b762a98c21119297", size = 1753647, upload-time = "2026-04-03T22:57:00.39Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/da/48/8504168e7a3ede9577a2d8aa0ed3f13471ef2db6431f506105b94f284d05/aiogram-3.26.0-py3-none-any.whl", hash = "sha256:dd8ea7feb2409953ad1424564355926207af90bb2204e37be7373fe6de201016", size = 716388, upload-time = "2026-03-02T23:29:19.076Z" },
+    { url = "https://files.pythonhosted.org/packages/aa/1f/64c4a9428d15ccea5aa7b204fd53061b94407640d6b075cd61c38899dd53/aiogram-3.27.0-py3-none-any.whl", hash = "sha256:26a091b6266d87db514e02703072035e7c17feebef480f927083bcfb22f634a3", size = 727326, upload-time = "2026-04-03T22:56:58.427Z" },
 ]
 
 [[package]]
@@ -39,6 +39,11 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/0c/db/f488713e1f6707ea7eacafed1909834a691c8d7a149b65b1a3936adf386d/aiogram_i18n-1.5.tar.gz", hash = "sha256:15f7d8064aba842fe6b8529c8962063415b2ca86b6c603d24cba41788dc35062", size = 19665, upload-time = "2026-03-07T23:36:17.483Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d4/09/a5ffedd5fca4e623a3e59ca39e88efe3671415eaaf9189b932d7b43b92d4/aiogram_i18n-1.5-py3-none-any.whl", hash = "sha256:6ce55978d32c8d1008d59f029c300506c6de48a18c8c346de3f666bd78013779", size = 33851, upload-time = "2026-03-07T23:36:16.374Z" },
+]
+
+[package.optional-dependencies]
+runtime = [
+    { name = "fluent-runtime" },
 ]
 
 [[package]]
@@ -447,7 +452,7 @@ dependencies = [
 
 [package.optional-dependencies]
 all = [
-    { name = "aiogram-i18n" },
+    { name = "aiogram-i18n", extra = ["runtime"] },
     { name = "aiosqlite" },
     { name = "alembic" },
     { name = "arq" },
@@ -471,7 +476,7 @@ db = [
     { name = "sqlalchemy" },
 ]
 dev = [
-    { name = "aiogram-i18n" },
+    { name = "aiogram-i18n", extra = ["runtime"] },
     { name = "aiosqlite" },
     { name = "alembic" },
     { name = "arq" },
@@ -503,7 +508,7 @@ http = [
     { name = "httpx" },
 ]
 i18n = [
-    { name = "aiogram-i18n" },
+    { name = "aiogram-i18n", extra = ["runtime"] },
 ]
 postgres = [
     { name = "asyncpg" },
@@ -518,10 +523,10 @@ sqlite = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aiogram", specifier = ">=3.13.0,<4.0" },
-    { name = "aiogram-i18n", marker = "extra == 'all'", specifier = ">=1.4" },
-    { name = "aiogram-i18n", marker = "extra == 'dev'", specifier = ">=1.4" },
-    { name = "aiogram-i18n", marker = "extra == 'i18n'", specifier = ">=1.4" },
+    { name = "aiogram", specifier = ">=3.27.0,<4.0" },
+    { name = "aiogram-i18n", extras = ["runtime"], marker = "extra == 'all'", specifier = ">=1.5,<2.0" },
+    { name = "aiogram-i18n", extras = ["runtime"], marker = "extra == 'dev'", specifier = ">=1.5,<2.0" },
+    { name = "aiogram-i18n", extras = ["runtime"], marker = "extra == 'i18n'", specifier = ">=1.5,<2.0" },
     { name = "aiohttp", specifier = ">=3.13.4" },
     { name = "aiosqlite", marker = "extra == 'all'", specifier = ">=0.19.0" },
     { name = "aiosqlite", marker = "extra == 'db'", specifier = ">=0.19.0" },
@@ -748,6 +753,34 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/94/b8/00651a0f559862f3bb7d6f7477b192afe3f583cc5e26403b44e59a55ab34/filelock-3.25.2.tar.gz", hash = "sha256:b64ece2b38f4ca29dd3e810287aa8c48182bbecd1ae6e9ae126c9b35f1382694", size = 40480, upload-time = "2026-03-11T20:45:38.487Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a4/a5/842ae8f0c08b61d6484b52f99a03510a3a72d23141942d216ebe81fefbce/filelock-3.25.2-py3-none-any.whl", hash = "sha256:ca8afb0da15f229774c9ad1b455ed96e85a81373065fb10446672f64444ddf70", size = 26759, upload-time = "2026-03-11T20:45:37.437Z" },
+]
+
+[[package]]
+name = "fluent-runtime"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs" },
+    { name = "babel" },
+    { name = "fluent-syntax" },
+    { name = "pytz" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/dc/54/94bbd857443565a5776027165fe1e2634d836681d7d9c8992a2fd0ce8302/fluent.runtime-0.4.0.tar.gz", hash = "sha256:cb5ef96a58a3f67acaaca046d1201d202a1ebf2823e5e664370f359bae20574d", size = 17591, upload-time = "2023-03-16T11:10:35.165Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e5/89/a19b0bdfc74977b44aca2ad2e0600fd89c778184fcbb7fc44ba1002cc7b5/fluent.runtime-0.4.0-py2.py3-none-any.whl", hash = "sha256:51fd02582c2363e1106d7051642967a1b7f406dd9c317bd4600a73ede40c5146", size = 15627, upload-time = "2023-03-16T11:10:33.43Z" },
+]
+
+[[package]]
+name = "fluent-syntax"
+version = "0.19.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/51/52/de75f2faf499ed5a089acff2ab8bda5fc3b8db8a3f1615428ef9ccbf1917/fluent.syntax-0.19.0.tar.gz", hash = "sha256:920326d7f46864b9758f0044e9968e3112198bc826acee16ddd8f11d359004fd", size = 15039, upload-time = "2023-03-16T11:03:24.023Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/54/28/475734afb670bf7932caa1828183a4687cac51111950b9fb633c4f976afc/fluent.syntax-0.19.0-py2.py3-none-any.whl", hash = "sha256:b352b3475fac6c6ed5f06527921f432aac073d764445508ee5218aeccc7cc5c4", size = 16432, upload-time = "2023-03-16T11:03:21.934Z" },
 ]
 
 [[package]]
@@ -2034,6 +2067,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/82/ed/0301aeeac3e5353ef3d94b6ec08bbcabd04a72018415dcb29e588514bba8/python_dotenv-1.2.2.tar.gz", hash = "sha256:2c371a91fbd7ba082c2c1dc1f8bf89ca22564a087c2c287cd9b662adde799cf3", size = 50135, upload-time = "2026-03-01T16:00:26.196Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0b/d7/1959b9648791274998a9c3526f6d0ec8fd2233e4d4acce81bbae76b44b2a/python_dotenv-1.2.2-py3-none-any.whl", hash = "sha256:1d8214789a24de455a8b8bd8ae6fe3c6b69a5e3d64aa8a8e5d68e694bbcb285a", size = 22101, upload-time = "2026-03-01T16:00:25.09Z" },
+]
+
+[[package]]
+name = "pytz"
+version = "2026.1.post1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/56/db/b8721d71d945e6a8ac63c0fc900b2067181dbb50805958d4d4661cf7d277/pytz-2026.1.post1.tar.gz", hash = "sha256:3378dde6a0c3d26719182142c56e60c7f9af7e968076f31aae569d72a0358ee1", size = 321088, upload-time = "2026-03-03T07:47:50.683Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/10/99/781fe0c827be2742bcc775efefccb3b048a3a9c6ce9aec0cbf4a101677e5/pytz-2026.1.post1-py2.py3-none-any.whl", hash = "sha256:f2fd16142fda348286a75e1a524be810bb05d444e5a081f37f7affc635035f7a", size = 510489, upload-time = "2026-03-03T07:47:49.167Z" },
 ]
 
 [[package]]

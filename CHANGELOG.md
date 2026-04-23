@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-04-23
+
+### Changed
+
+- **Aiogram Stack**: Raised the core `aiogram` dependency contract to `>=3.27.0,<4.0` and the optional i18n extra to `aiogram-i18n[runtime]>=1.5,<2.0`.
+- **Project Templates**: Updated generated project dependencies to use the same modern aiogram and aiogram-i18n ranges.
+
+### Fixed
+
+- **I18n Manager Initialization**: Updated `FSMContextI18nManager` to initialize `aiogram-i18n`'s `BaseManager`, restoring `locale_getter` and `locale_setter` for `I18nMiddleware`.
+
 ## [0.2.1] - 2026-04-18
 
 ### Fixed

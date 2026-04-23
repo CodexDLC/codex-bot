@@ -51,8 +51,8 @@ class FSMContextI18nManager(BaseManager):
         allowed_locales: list[str] | None = None,
         default_locale: str = "en",
     ) -> None:
+        super().__init__(default_locale=default_locale)
         self.allowed_locales: list[str] = allowed_locales or []
-        self.default_locale: str = default_locale
 
     async def get_locale(self, event_from_user: User | None = None, **kwargs: Any) -> str:
         """

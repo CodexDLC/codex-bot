@@ -69,5 +69,6 @@ dmypy.json
 .claude/
 # Sandbox for template E2E testing
 sandbox/
-# Temporary files from LocalesCompiler (if they leak into root)
-bot_locales_*
+# Agent instructions (local-only, points to local knowledge graph)
+AGENTS.md
+CLAUDE.md
