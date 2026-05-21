@@ -91,6 +91,28 @@ class StreamStorageProtocol(Protocol):
         """
         ...
 
+    async def claim_stale_events(
+        self,
+        stream_name: str,
+        group_name: str,
+        consumer_name: str,
+        min_idle_time: int,
+        count: int,
+    ) -> list[tuple[str, dict[str, Any]]]:
+        """Claims pending messages from the group that have been idle for a given time.
+
+        Args:
+            stream_name: Name of the stream.
+            group_name: Consumer group name.
+            consumer_name: Unique name of this processor instance (the new owner).
+            min_idle_time: Minimum idle time in milliseconds before a message is claimed.
+            count: Maximum number of messages to claim.
+
+        Returns:
+            List of pairs (message_id, data_dict).
+        """
+        ...
+
 
 MessageCallback = Callable[[dict[str, Any]], Awaitable[None]]
 
@@ -137,6 +159,7 @@ class RedisStreamProcessor:
         self.is_running = False
         self._callback: MessageCallback | None = None
         self._task: asyncio.Task[None] | None = None
+        self._last_recovery_time: float = 0.0
 
     def set_message_callback(self, callback: MessageCallback) -> None:
         """Sets the callback for processing each message.
@@ -194,14 +217,30 @@ class RedisStreamProcessor:
     async def _consume_loop(self) -> None:
         """Main infinite loop for consuming messages from the stream.
 
-        TODO: Implement PEL (Pending Entries List) recovery mechanism.
-        Currently, if a handler crashes and no RetrySchedulerProtocol is provided,
-        the message stays in PEL forever without ACK, causing memory leaks in Redis.
-        Need to add XPENDING/XCLAIM logic on processor startup to fetch unacked messages.
+        Includes automatic PEL (Pending Entries List) recovery mechanism via XAUTOCLAIM.
         """
         try:
             while self.is_running:
                 try:
+                    # 1. Periodically recover stale messages from the PEL (every 60 seconds)
+                    now = asyncio.get_event_loop().time()
+                    if now - self._last_recovery_time > 60:
+                        self._last_recovery_time = now
+                        if hasattr(self.storage, "claim_stale_events"):
+                            try:
+                                stale_messages = await self.storage.claim_stale_events(
+                                    stream_name=self.stream_name,
+                                    group_name=self.group_name,
+                                    consumer_name=self.consumer_name,
+                                    min_idle_time=60000,  # 1 minute
+                                    count=self.batch_count,
+                                )
+                                for message_id, data in stale_messages:
+                                    await self._process_single(message_id, data)
+                            except Exception as e:
+                                log.warning(f"RedisStreamProcessor | PEL recovery failed: {e}")
+
+                    # 2. Consume new messages
                     messages = await self.storage.read_events(
                         stream_name=self.stream_name,
                         group_name=self.group_name,

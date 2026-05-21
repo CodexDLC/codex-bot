@@ -4,33 +4,12 @@ codex_bot.stream.dispatcher
 Bot-specific Stream dispatcher with DI container support.
 """
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-if TYPE_CHECKING:
-    from codex_platform.stream_broker import (
-        RetrySchedulerProtocol,
-        StreamDispatcher,
-    )
-else:
-    try:
-        from codex_platform.stream_broker import (
-            RetrySchedulerProtocol,
-            StreamDispatcher,
-        )
-    except ImportError:
-        # Failsafe for environment without codex-platform
-        class RetrySchedulerProtocol:
-            pass
-
-        class StreamDispatcher:
-            def __init__(self, *args: Any, **kwargs: Any) -> None:
-                pass
-
-            async def process(self, *args: Any, **kwargs: Any) -> Any:
-                raise RuntimeError("codex-platform is not installed")
-
-            def include_router(self, *args: Any, **kwargs: Any) -> Any:
-                raise RuntimeError("codex-platform is not installed")
+from codex_platform.streams import (
+    RetrySchedulerProtocol,
+    StreamDispatcher,
+)
 
 
 class BotStreamDispatcher(StreamDispatcher):  # type: ignore

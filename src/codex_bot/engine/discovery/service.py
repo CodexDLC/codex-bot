@@ -9,25 +9,10 @@ Strictly follows the convention:
 import importlib
 import logging
 from types import ModuleType
-from typing import TYPE_CHECKING, Any, Literal
+from typing import Any, Literal
 
 from aiogram import Router
-
-if TYPE_CHECKING:
-    from codex_platform.stream_broker import StreamBroker, StreamRouter
-    from codex_platform.system_models import NodeInfo
-else:
-    try:
-        from codex_platform.stream_broker import StreamBroker, StreamRouter
-        from codex_platform.system_models import NodeInfo
-    except ImportError:
-
-        class StreamRouter:
-            pass
-
-        StreamBroker = object
-        NodeInfo = object
-
+from codex_platform.streams import StreamRouter
 
 from ...fsm.garbage_collector import GarbageStateRegistry
 from ...stream.dispatcher import BotStreamDispatcher
